@@ -1,0 +1,178 @@
+# Color Tokens
+
+> **파일**: `src/design-system/tokens/colors.ts`
+
+색상 토큰은 **Primitive → Semantic** 2단계로 관리됩니다.
+컴포넌트는 항상 Semantic 토큰을 참조하며, Primitive 토큰을 직접 사용하지 않습니다.
+
+---
+
+## 1. Primitive Palette
+
+팔레트의 원색을 정의합니다. Semantic 토큰의 재료가 됩니다.
+
+### Brand — Indigo
+
+| Token | Hex | 미리보기 |
+|-------|-----|---------|
+| `primitives.indigo[50]` | `#eef2ff` | 🟦 매우 연한 인디고 |
+| `primitives.indigo[100]` | `#e0e7ff` | 🟦 |
+| `primitives.indigo[200]` | `#c7d2fe` | 🟦 |
+| `primitives.indigo[300]` | `#a5b4fc` | 🟦 |
+| `primitives.indigo[400]` | `#818cf8` | 🟦 |
+| `primitives.indigo[500]` | `#6366f1` | 🟣 **메인 브랜드** |
+| `primitives.indigo[600]` | `#4f46e5` | 🟣 |
+| `primitives.indigo[700]` | `#4338ca` | 🟣 |
+| `primitives.indigo[800]` | `#3730a3` | 🟣 진한 인디고 |
+| `primitives.indigo[900]` | `#312e81` | 🟣 |
+| `primitives.indigo[950]` | `#1e1b4b` | ⬛ |
+
+### Neutral — Warm Slate
+
+| Token | Hex | 용도 |
+|-------|-----|------|
+| `primitives.neutral[0]` | `#ffffff` | 카드·패널 배경 |
+| `primitives.neutral[50]` | `#fafafa` | |
+| `primitives.neutral[100]` | `#f5f5f5` | 페이지 배경 |
+| `primitives.neutral[200]` | `#e5e5e5` | 기본 border |
+| `primitives.neutral[300]` | `#d4d4d4` | 강조 border |
+| `primitives.neutral[400]` | `#a3a3a3` | disabled 텍스트 |
+| `primitives.neutral[500]` | `#737373` | secondary 텍스트 |
+| `primitives.neutral[600]` | `#525252` | |
+| `primitives.neutral[700]` | `#404040` | |
+| `primitives.neutral[800]` | `#262626` | |
+| `primitives.neutral[900]` | `#171717` | primary 텍스트 |
+| `primitives.neutral[1000]` | `#000000` | |
+
+### Status
+
+| 그룹 | Token | Hex |
+|------|-------|-----|
+| **Green** | `primitives.green[50]` | `#f0fdf4` |
+| | `primitives.green[500]` | `#22c55e` |
+| | `primitives.green[600]` | `#16a34a` |
+| **Red** | `primitives.red[50]` | `#fef2f2` |
+| | `primitives.red[500]` | `#ef4444` |
+| | `primitives.red[600]` | `#dc2626` |
+| **Amber** | `primitives.amber[50]` | `#fffbeb` |
+| | `primitives.amber[500]` | `#f59e0b` |
+| | `primitives.amber[600]` | `#d97706` |
+| **Blue** | `primitives.blue[50]` | `#eff6ff` |
+| | `primitives.blue[500]` | `#3b82f6` |
+| | `primitives.blue[600]` | `#2563eb` |
+
+---
+
+## 2. Semantic Tokens
+
+역할(Role) 기반 토큰. 컴포넌트는 이 토큰만 참조합니다.
+
+### Primary (Brand)
+
+| Token                     | 값 (→ Primitive)         | 용도              |
+|---------------------------|-------------------------|-----------------|
+| `colors.primary.lighter`  | `indigo[50]` `#eef2ff`  | hover 배경, 연한 강조 |
+| `colors.primary.light`    | `indigo[300]` `#a5b4fc` | 연한 강조           |
+| `colors.primary.main`     | `indigo[500]` `#6366f1` | **기본 브랜드 색상**   |
+| `colors.primary.dark`     | `indigo[700]` `#4338ca` | hover, 강조       |
+| `colors.primary.darker`   | `indigo[900]` `#312e81` | 매우 진한 강조        |
+| `colors.primary.contrast` | `neutral[0]` `#ffffff`  | 브랜드 색 위 텍스트     |
+
+### Background
+
+| Token               | 값                  | 용도             |
+|---------------------|--------------------|----------------|
+| `colors.bg.default` | `#f5f5f5`          | 페이지 전체 배경      |
+| `colors.bg.paper`   | `#ffffff`          | 카드, 패널, 모달 배경  |
+| `colors.bg.overlay` | `rgba(0,0,0,0.04)` | hover 오버레이 레이어 |
+
+### Text
+
+| Token                   | 값         | 용도           |
+|-------------------------|-----------|--------------|
+| `colors.text.primary`   | `#171717` | 본문, 제목       |
+| `colors.text.secondary` | `#737373` | 부가 설명, 메타 정보 |
+| `colors.text.disabled`  | `#a3a3a3` | 비활성 상태       |
+| `colors.text.inverse`   | `#ffffff` | 어두운 배경 위 텍스트 |
+| `colors.text.link`      | `#4f46e5` | 링크 텍스트       |
+
+### Border / Divider
+
+| Token                   | 값         | 용도              |
+|-------------------------|-----------|-----------------|
+| `colors.border.default` | `#e5e5e5` | 카드, 컨테이너 기본 테두리 |
+| `colors.border.strong`  | `#d4d4d4` | 강조 테두리          |
+| `colors.border.focus`   | `#818cf8` | 포커스 링           |
+
+### Status
+
+| Token       | light     | main      | dark      |
+|-------------|-----------|-----------|-----------|
+| **success** | `#f0fdf4` | `#22c55e` | `#16a34a` |
+| **error**   | `#fef2f2` | `#ef4444` | `#dc2626` |
+| **warning** | `#fffbeb` | `#f59e0b` | `#d97706` |
+| **info**    | `#eff6ff` | `#3b82f6` | `#2563eb` |
+
+---
+
+## 3. 코드 사용 예시
+
+```ts
+import { colors, primitives } from '@ds'
+
+// ✅ Semantic 토큰 사용 (권장)
+colors.primary.main       // → '#6366f1'
+colors.text.secondary     // → '#737373'
+colors.bg.paper           // → '#ffffff'
+colors.border.focus       // → '#818cf8'
+colors.success.main       // → '#22c55e'
+
+// ⚠️ Primitive 토큰 직접 사용 (토큰 정의 내부에서만 권장)
+primitives.indigo[500]    // → '#6366f1'
+primitives.neutral[200]   // → '#e5e5e5'
+```
+
+### MUI sx prop에서 사용
+
+```tsx
+import { colors } from '@ds'
+
+<Box sx={{
+  bgcolor: colors.bg.paper,
+  border: `1px solid ${colors.border.default}`,
+  color: colors.text.primary,
+  '&:hover': {
+    bgcolor: colors.primary.lighter,
+    borderColor: colors.primary.main,
+  },
+}} />
+```
+
+---
+
+## 4. MUI 팔레트 매핑
+
+`theme.ts`에서 Semantic 토큰이 MUI 팔레트로 주입됩니다.
+
+```ts
+// theme.ts 내부 (참고용)
+palette: {
+  primary: {
+    light:        colors.primary.light,      // indigo[300]
+    main:         colors.primary.main,       // indigo[500]
+    dark:         colors.primary.dark,       // indigo[700]
+    contrastText: colors.primary.contrast,   // #ffffff
+  },
+  background: {
+    default: colors.bg.default,  // #f5f5f5
+    paper:   colors.bg.paper,    // #ffffff
+  },
+  text: {
+    primary:   colors.text.primary,   // #171717
+    secondary: colors.text.secondary, // #737373
+    disabled:  colors.text.disabled,  // #a3a3a3
+  },
+  divider: colors.border.default,     // #e5e5e5
+}
+```
+

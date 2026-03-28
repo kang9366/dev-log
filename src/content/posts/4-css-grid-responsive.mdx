@@ -1,0 +1,115 @@
+export const meta = {
+  title: 'CSS Grid로 반응형 카드 그리드 최적화하기',
+  date: '25. 10. 28',
+  tag: 'css',
+  slug: 'css-grid-responsive',
+  imageUrl: 'https://images.unsplash.com/photo-1484417894907-623942c8ee29?w=1200&q=80',
+  excerpt: 'Grid 템플릿과 minmax, auto-fit을 활용해 카드 레이아웃을 단순화하는 방법을 공유합니다.',
+}
+
+## Flexbox vs Grid — 언제 무엇을?
+
+| | Flexbox | Grid |
+|---|---------|------|
+| 방향 | 1차원 (행 또는 열) | 2차원 (행 + 열) |
+| 적합한 용도 | 헤더 nav, 버튼 그룹 | 카드 레이아웃, 페이지 구조 |
+| 아이템 크기 제어 | 콘텐츠 기반 | 셀 기반 |
+
+카드 그리드처럼 **2차원 레이아웃**이 필요할 때는 Grid가 훨씬 직관적입니다.
+
+---
+
+## 기본 Grid 카드 레이아웃
+
+```css
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+```
+
+이 코드는 **항상 3열**을 고정합니다. 모바일에서 미디어 쿼리로 열 수를 바꿔야 합니다.
+
+---
+
+## `auto-fit` + `minmax` — 미디어 쿼리 없는 반응형
+
+```css
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+```
+
+- `minmax(280px, 1fr)`: 최소 280px, 나머지 공간은 균등 분배
+- `auto-fit`: 공간이 허용하는 만큼 열을 자동으로 생성
+
+| 뷰포트 너비 | 결과 열 수 |
+|------------|-----------|
+| 320px | 1열 |
+| 640px | 2열 |
+| 960px | 3열 |
+| 1280px+ | 4열 |
+
+미디어 쿼리 **없이** 뷰포트 크기에 따라 자동으로 열이 조정됩니다.
+
+---
+
+## `auto-fill` vs `auto-fit`
+
+```css
+/* auto-fill: 빈 열도 공간 확보 */
+grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+
+/* auto-fit: 남은 공간을 기존 아이템이 채움 */
+grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+```
+
+아이템이 3개인 컨테이너에서 5열이 들어갈 공간이 있다면:
+- `auto-fill` → 빈 열 2개가 공간 유지
+- `auto-fit` → 3개 아이템이 공간을 균등하게 나눔
+
+---
+
+## 특정 카드 강조 — `grid-column`
+
+```css
+/* 첫 번째 카드가 전체 너비 사용 */
+.card:first-child {
+  grid-column: 1 / -1;
+}
+
+/* 처음 두 카드가 2열 차지 */
+.card:nth-child(-n+2) {
+  grid-column: span 2;
+}
+```
+
+---
+
+## MUI에서 Grid 활용 (이 프로젝트 방식)
+
+```tsx
+<Box
+  display="grid"
+  gridTemplateColumns={{
+    xs: '1fr',
+    sm: 'repeat(2, 1fr)',
+    lg: 'repeat(3, 1fr)',
+  }}
+  gap={{ xs: 2, md: 3 }}
+>
+  {posts.map(post => <BlogPostCard key={post.id} {...post} />)}
+</Box>
+```
+
+MUI의 `sx` 브레이크포인트를 활용하면 CSS Grid를 선언적으로 작성할 수 있습니다.
+
+---
+
+## 마무리
+
+`auto-fit` + `minmax`는 미디어 쿼리 없이도 완전한 반응형 그리드를 만들어줍니다. 단, 최소·최대 크기를 어떻게 설정하느냐가 품질을 좌우합니다. `280px`은 카드 레이아웃에서 검증된 기준값으로 시작하기 좋습니다.
+

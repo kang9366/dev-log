@@ -1,0 +1,209 @@
+# Typography
+
+> **파일**: `src/design-system/tokens/typography.ts`
+> **컴포넌트**: `src/design-system/components/Typography.tsx`
+
+---
+
+## 1. Font Family
+
+```ts
+import { fontFamily } from '@ds'
+```
+
+| 이름 | 폰트 스택 | 용도 |
+|------|-----------|------|
+| `fontFamily.sans` | **Inter**, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto … | 모든 UI 텍스트 (기본) |
+| `fontFamily.mono` | **JetBrains Mono**, Fira Code, Cascadia Code, Menlo … | 코드 블록, `<code>`, `<pre>` |
+
+### 로드 방법 (`index.html`)
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+  rel="stylesheet"
+/>
+```
+
+---
+
+## 2. Font Weight
+
+```ts
+import { fontWeight } from '@ds'
+```
+
+| Token | 값 | 사용 위치 |
+|-------|----|---------|
+| `fontWeight.regular` | `400` | body, caption |
+| `fontWeight.medium` | `500` | subtitle, button, overline |
+| `fontWeight.semibold` | `600` | h4, h5, h6 |
+| `fontWeight.bold` | `700` | h1, h2, h3, display |
+| `fontWeight.extrabold` | `800` | (예비) 특별 강조 |
+
+---
+
+## 3. Font Size Scale
+
+```ts
+import { fontSize } from '@ds'
+```
+
+| Token | rem | px | 용도 |
+|-------|-----|----|------|
+| `fontSize.xs` | `0.75rem` | 12px | caption, overline, badge |
+| `fontSize.sm` | `0.875rem` | 14px | body2, subtitle2, code |
+| `fontSize.base` | `1rem` | 16px | body1, subtitle1, h6 |
+| `fontSize.lg` | `1.125rem` | 18px | h5 |
+| `fontSize.xl` | `1.25rem` | 20px | h4 |
+| `fontSize['2xl']` | `1.5rem` | 24px | h3 |
+| `fontSize['3xl']` | `1.875rem` | 30px | h2 |
+| `fontSize['4xl']` | `2.25rem` | 36px | h1 |
+| `fontSize['5xl']` | `3rem` | 48px | display |
+
+---
+
+## 4. Line Height
+
+```ts
+import { lineHeight } from '@ds'
+```
+
+| Token | 값 | 용도 |
+|-------|----|------|
+| `lineHeight.none` | `1` | 아이콘 텍스트, 한 줄 전용 |
+| `lineHeight.tight` | `1.25` | display, h1, h2 |
+| `lineHeight.snug` | `1.375` | h3, h4 |
+| `lineHeight.normal` | `1.5` | h5, h6, subtitle, caption |
+| `lineHeight.relaxed` | `1.625` | body1, body2, code — 가독성 최우선 |
+| `lineHeight.loose` | `2` | (예비) 특별히 넓은 간격 |
+
+---
+
+## 5. Letter Spacing
+
+```ts
+import { letterSpacing } from '@ds'
+```
+
+| Token | 값 | 용도 |
+|-------|----|------|
+| `letterSpacing.tight` | `-0.04em` | display |
+| `letterSpacing.snug` | `-0.02em` | h1, h2, h3 |
+| `letterSpacing.normal` | `0em` | body, subtitle, h4~h6 |
+| `letterSpacing.wide` | `0.02em` | caption |
+| `letterSpacing.wider` | `0.05em` | (예비) |
+| `letterSpacing.widest` | `0.1em` | overline (대문자 라벨) |
+
+---
+
+## 6. Variant 전체 스펙
+
+```ts
+import { typographyVariants } from '@ds'
+```
+
+| Variant | Size | Weight | Line Height | Letter Spacing | 렌더 태그 |
+|---------|------|--------|-------------|----------------|---------|
+| `display` | `3rem` (48px) | bold 700 | tight 1.25 | tight -0.04em | `<h1>` |
+| `h1` | `2.25rem` (36px) | bold 700 | tight 1.25 | snug -0.02em | `<h1>` |
+| `h2` | `1.875rem` (30px) | bold 700 | snug 1.375 | snug -0.02em | `<h2>` |
+| `h3` | `1.5rem` (24px) | semibold 600 | snug 1.375 | snug -0.02em | `<h3>` |
+| `h4` | `1.25rem` (20px) | semibold 600 | normal 1.5 | normal 0 | `<h4>` |
+| `h5` | `1.125rem` (18px) | semibold 600 | normal 1.5 | normal 0 | `<h5>` |
+| `h6` | `1rem` (16px) | semibold 600 | normal 1.5 | normal 0 | `<h6>` |
+| `subtitle1` | `1rem` (16px) | medium 500 | normal 1.5 | normal 0 | `<h6>` |
+| `subtitle2` | `0.875rem` (14px) | medium 500 | normal 1.5 | normal 0 | `<h6>` |
+| `body1` | `1rem` (16px) | regular 400 | relaxed 1.625 | normal 0 | `<p>` |
+| `body2` | `0.875rem` (14px) | regular 400 | relaxed 1.625 | normal 0 | `<p>` |
+| `caption` | `0.75rem` (12px) | regular 400 | normal 1.5 | wide 0.02em | `<span>` |
+| `overline` | `0.75rem` (12px) | medium 500 | normal 1.5 | widest 0.1em | `<span>` |
+| `code` | `0.875rem` (14px) | regular 400 | relaxed 1.625 | normal 0 | `<code>` |
+
+---
+
+## 7. Text 컴포넌트
+
+> **파일**: `src/design-system/components/Typography.tsx`
+
+MUI `Typography`의 얇은 래퍼로, color alias와 편의 prop을 추가합니다.
+
+### Props
+
+| Prop | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `variant` | Variant | `'body1'` | 위 6번 표의 variant |
+| `color` | ColorAlias \| string | `'primary'` | 아래 color alias 참조 |
+| `clamp` | number | — | 말줄임 줄 수 (WebkitLineClamp) |
+| `inline` | boolean | `false` | `true`면 `<span>`으로 렌더 |
+| `as` | ElementType | — | 렌더링 HTML 태그 오버라이드 |
+
+### Color Alias
+
+| alias | → MUI color | 실제 값 |
+|-------|------------|---------|
+| `primary` | `text.primary` | `#171717` |
+| `secondary` | `text.secondary` | `#737373` |
+| `disabled` | `text.disabled` | `#a3a3a3` |
+| `inverse` | `common.white` | `#ffffff` |
+| `link` | `primary.main` | `#6366f1` |
+| `success` | `success.main` | `#22c55e` |
+| `error` | `error.main` | `#ef4444` |
+| `warning` | `warning.main` | `#f59e0b` |
+| `info` | `info.main` | `#3b82f6` |
+
+### 사용 예시
+
+```tsx
+import { Text } from '@ds'
+
+// 기본 variant
+<Text variant="display">히어로 대제목</Text>
+<Text variant="h1">페이지 제목</Text>
+<Text variant="h2">섹션 제목</Text>
+<Text variant="h3">서브 섹션</Text>
+<Text variant="body1">본문 텍스트입니다.</Text>
+<Text variant="body2">작은 본문 텍스트</Text>
+
+// color alias
+<Text variant="body2" color="secondary">보조 설명</Text>
+<Text variant="caption" color="disabled">비활성 텍스트</Text>
+<Text variant="body1" color="link">링크 스타일 텍스트</Text>
+<Text variant="body2" color="success">성공 메시지</Text>
+<Text variant="body2" color="error">오류 메시지</Text>
+
+// 말줄임 (2줄)
+<Text variant="body1" clamp={2}>
+  이 텍스트는 2줄을 초과하면 말줄임표(…)로 잘립니다.
+</Text>
+
+// 인라인
+<Text variant="body2" inline>인라인 </Text>
+<Text variant="body2" color="link" inline>링크</Text>
+<Text variant="body2" inline>처럼 보입니다</Text>
+
+// 코드
+<Text variant="code">const greeting = "hello"</Text>
+
+// overline (섹션 레이블)
+<Text variant="overline" color="secondary">CATEGORY</Text>
+
+// as prop — h1처럼 스타일, p 태그로 렌더
+<Text variant="h2" as="p">시맨틱 태그 오버라이드</Text>
+```
+
+---
+
+## 8. 직접 MUI Typography 사용 시
+
+테마에 커스텀 variant가 등록되어 있으므로 MUI `Typography`에서도 사용 가능합니다.
+
+```tsx
+import { Typography } from '@mui/material'
+
+<Typography variant="display">대제목</Typography>
+<Typography variant="code">const x = 1</Typography>
+```
+

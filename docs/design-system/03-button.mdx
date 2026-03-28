@@ -1,0 +1,216 @@
+# Button
+
+> **파일**: `src/design-system/components/Button.tsx`
+> **기반**: MUI `Button` 래퍼 + 커스텀 `ghost` variant
+
+---
+
+## 1. Props
+
+| Prop        | 타입                                                                        | 기본값           | 설명                         |
+|-------------|---------------------------------------------------------------------------|---------------|----------------------------|
+| `variant`   | `'contained' \| 'outlined' \| 'text' \| 'ghost'`                          | `'contained'` | 버튼 스타일 종류                  |
+| `size`      | `'small' \| 'medium' \| 'large'`                                          | `'medium'`    | 버튼 크기                      |
+| `color`     | `'primary' \| 'secondary' \| 'error' \| 'warning' \| 'info' \| 'success'` | `'primary'`   | 색상 테마                      |
+| `loading`   | `boolean`                                                                 | `false`       | 로딩 상태 (spinner + disabled) |
+| `startIcon` | `ReactNode`                                                               | —             | 좌측 아이콘                     |
+| `endIcon`   | `ReactNode`                                                               | —             | 우측 아이콘                     |
+| `fullWidth` | `boolean`                                                                 | `false`       | 전체 너비                      |
+| `disabled`  | `boolean`                                                                 | `false`       | 비활성화                       |
+
+> MUI `ButtonProps`를 상속하므로 `onClick`, `href`, `component`, `sx` 등 모든 MUI 속성 사용 가능.
+
+---
+
+## 2. Variant
+
+### `contained` — 기본, 채운 스타일
+
+```tsx
+<Button variant="contained">저장하기</Button>
+<Button variant="contained" color="primary">Primary</Button>
+<Button variant="contained" color="secondary">Secondary</Button>
+<Button variant="contained" color="error">삭제</Button>
+<Button variant="contained" color="success">완료</Button>
+```
+
+**스타일 명세** (primary 기준)
+
+| 상태 | 배경 | 텍스트 | 기타 |
+|------|------|--------|------|
+| default | `#6366f1` | `#ffffff` | — |
+| hover | `#4338ca` | `#ffffff` | `translateY(-1px)`, `boxShadow: 0 4px 12px rgba(99,102,241,0.3)` |
+| active | `#4338ca` | `#ffffff` | `translateY(0)`, shadow 제거 |
+| focus-visible | `#6366f1` | `#ffffff` | `outline: 2px solid #818cf8` offset 2px |
+| disabled | opacity 50% | — | cursor not-allowed |
+
+---
+
+### `outlined` — 테두리만, 배경 투명
+
+```tsx
+<Button variant="outlined">취소</Button>
+<Button variant="outlined" color="primary">Primary</Button>
+<Button variant="outlined" color="error">삭제</Button>
+```
+
+**스타일 명세** (primary 기준)
+
+| 상태 | 테두리 | 텍스트 | 배경 |
+|------|--------|--------|------|
+| default | `1.5px solid #6366f1` | `#6366f1` | transparent |
+| hover | `#4338ca` | `#4338ca` | `#eef2ff` (primary.lighter) |
+| focus-visible | — | — | `outline: 2px solid #818cf8` |
+
+---
+
+### `text` — 배경·테두리 없는 텍스트 버튼
+
+```tsx
+<Button variant="text">더 보기</Button>
+<Button variant="text" color="primary">자세히</Button>
+```
+
+**스타일 명세** (primary 기준)
+
+| 상태 | 텍스트 | 배경 |
+|------|--------|------|
+| default | `#6366f1` | transparent |
+| hover | `#6366f1` | `#eef2ff` |
+| focus-visible | — | `outline: 2px solid #818cf8` |
+
+---
+
+### `ghost` — 중립적인 보조 액션 (커스텀 variant)
+
+```tsx
+<Button variant="ghost">닫기</Button>
+<Button variant="ghost">취소</Button>
+```
+
+> `color` prop은 ghost variant에서 무시됩니다.
+
+**스타일 명세**
+
+| 상태 | 텍스트 | 배경 |
+|------|--------|------|
+| default | `#737373` (text.secondary) | transparent |
+| hover | `#171717` (text.primary) | `rgba(0,0,0,0.04)` |
+| focus-visible | — | `outline: 2px solid #818cf8` |
+
+---
+
+## 3. Size
+
+| Size | Padding | Font Size | 용도 |
+|------|---------|-----------|------|
+| `small` | `6px 14px` | `0.8125rem` (13px) | 밀도 높은 UI, 테이블 내 버튼 |
+| `medium` | `9px 20px` | `0.9375rem` (15px) | 기본값, 대부분의 상황 |
+| `large` | `12px 28px` | `1.0625rem` (17px) | CTA, 히어로 섹션 버튼 |
+
+```tsx
+<Button size="small">작게</Button>
+<Button size="medium">기본</Button>
+<Button size="large">크게</Button>
+```
+
+---
+
+## 4. Loading 상태
+
+`loading={true}` 시:
+- 텍스트는 **투명** 처리 (버튼 너비 유지)
+- 중앙에 **CircularProgress** spinner 표시
+- `disabled` 처리 (클릭 불가)
+- `startIcon`, `endIcon` 숨김
+
+```tsx
+<Button loading>저장 중...</Button>
+<Button loading variant="outlined">제출 중...</Button>
+<Button loading size="small">처리 중</Button>
+```
+
+---
+
+## 5. Icon 버튼
+
+```tsx
+import AddIcon from '@mui/icons-material/Add'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+
+// 좌측 아이콘
+<Button startIcon={<AddIcon />}>포스트 작성</Button>
+
+// 우측 아이콘
+<Button endIcon={<ArrowForwardIcon />} variant="text">더 보기</Button>
+
+// 양쪽 아이콘
+<Button startIcon={<AddIcon />} endIcon={<ArrowForwardIcon />}>
+  추가하기
+</Button>
+```
+
+---
+
+## 6. fullWidth
+
+```tsx
+<Button fullWidth>전체 너비 버튼</Button>
+<Button fullWidth variant="outlined">전체 너비 아웃라인</Button>
+```
+
+---
+
+## 7. 조합 예시
+
+```tsx
+import { Button } from '@ds'
+
+// 폼 저장/취소 패턴
+<Stack direction="row" spacing={1.5}>
+  <Button variant="ghost">취소</Button>
+  <Button variant="contained">저장</Button>
+</Stack>
+
+// 위험 액션 패턴
+<Stack direction="row" spacing={1.5}>
+  <Button variant="ghost">아니오</Button>
+  <Button variant="contained" color="error">삭제</Button>
+</Stack>
+
+// CTA 버튼 (히어로)
+<Button variant="contained" size="large" endIcon={<ArrowForwardIcon />}>
+  시작하기
+</Button>
+
+// 비동기 제출
+const [loading, setLoading] = useState(false)
+<Button loading={loading} onClick={handleSubmit}>
+  제출하기
+</Button>
+
+// 링크 버튼
+<Button
+  variant="contained"
+  component="a"
+  href="/posts"
+>
+  포스트 보기
+</Button>
+```
+
+---
+
+## 8. 테마 커스터마이징 위치
+
+스타일은 `src/design-system/theme.ts`의 `MuiButton` 오버라이드에서 관리합니다.
+인라인 `sx` prop으로 개별 인스턴스만 수정하는 것을 권장합니다.
+
+```tsx
+// ✅ 권장 — 인스턴스 단위 수정
+<Button sx={{ borderRadius: '20px', px: 4 }}>둥근 버튼</Button>
+
+// ✅ 권장 — 새로운 variant가 필요한 경우 theme.ts에 추가
+// theme.ts > MuiButton > variants 배열에 추가
+```
+

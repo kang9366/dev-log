@@ -1,0 +1,243 @@
+# Text (Typography Component)
+
+> **파일**: `src/design-system/components/Typography.tsx`
+
+MUI `Typography`의 얇은 래퍼 컴포넌트.
+디자인 시스템 토큰 기반 **color alias**, **말줄임(clamp)**, **인라인 렌더** 편의 기능을 제공합니다.
+
+---
+
+## 1. Props 전체 목록
+
+| Prop                 | 타입                     | 기본값         | 설명                            |
+|----------------------|------------------------|-------------|-------------------------------|
+| `variant`            | `Variant`              | `'body1'`   | 텍스트 스타일 variant (아래 목록 참고)    |
+| `color`              | `ColorAlias \| string` | `'primary'` | 색상 alias 또는 MUI color string  |
+| `clamp`              | `number`               | —           | 말줄임 최대 줄 수                    |
+| `inline`             | `boolean`              | `false`     | `true`면 `<span>` 렌더           |
+| `as`                 | `ElementType`          | —           | 렌더 HTML 태그 오버라이드              |
+| `sx`                 | `SxProps<Theme>`       | —           | MUI sx 스타일 확장                 |
+| …MUI TypographyProps | —                      | —           | MUI `Typography`의 모든 props 상속 |
+
+---
+
+## 2. Variant 목록
+
+| Variant     | 설명                                 | 기본 렌더 태그 |
+|-------------|------------------------------------|----------|
+| `display`   | 히어로 섹션 대제목 (3rem / bold)           | `<h1>`   |
+| `h1`        | 페이지 제목 (2.25rem / bold)            | `<h1>`   |
+| `h2`        | 섹션 제목 (1.875rem / bold)            | `<h2>`   |
+| `h3`        | 서브 섹션 (1.5rem / semibold)          | `<h3>`   |
+| `h4`        | 카드 제목 (1.25rem / semibold)         | `<h4>`   |
+| `h5`        | 작은 제목 (1.125rem / semibold)        | `<h5>`   |
+| `h6`        | 가장 작은 제목 (1rem / semibold)         | `<h6>`   |
+| `subtitle1` | 부제목 (1rem / medium)                | `<h6>`   |
+| `subtitle2` | 작은 부제목 (0.875rem / medium)         | `<h6>`   |
+| `body1`     | 본문 (1rem / regular)                | `<p>`    |
+| `body2`     | 작은 본문 (0.875rem / regular)         | `<p>`    |
+| `caption`   | 캡션, 메타 (0.75rem / regular)         | `<span>` |
+| `overline`  | 섹션 레이블 대문자 (0.75rem / medium)      | `<span>` |
+| `code`      | 인라인 코드 (0.875rem / JetBrains Mono) | `<code>` |
+
+---
+
+## 3. Color Alias
+
+| alias | 실제 값 | 사용 상황 |
+|-------|---------|---------|
+| `primary` | `#171717` | 제목, 본문 등 기본 텍스트 |
+| `secondary` | `#737373` | 부연 설명, 날짜, 카테고리 |
+| `disabled` | `#a3a3a3` | 비활성, placeholder |
+| `inverse` | `#ffffff` | 어두운 배경 위 텍스트 |
+| `link` | `#4f46e5` | 인라인 링크 스타일 |
+| `success` | `#22c55e` | 성공 메시지, 완료 상태 |
+| `error` | `#ef4444` | 오류 메시지, 경고 |
+| `warning` | `#f59e0b` | 주의 메시지 |
+| `info` | `#3b82f6` | 안내 메시지 |
+
+> alias 외에 MUI color string(`'text.secondary'`, `'primary.main'`)이나 CSS 색상값(`'#333'`)도 직접 전달 가능합니다.
+
+---
+
+## 4. 사용 예시
+
+### 기본 variant
+
+```tsx
+import { Text } from '@ds'
+
+<Text variant="display">DevLog에 오신 것을 환영합니다</Text>
+<Text variant="h1">포스트 제목</Text>
+<Text variant="h2">목차</Text>
+<Text variant="h3">소제목</Text>
+<Text variant="body1">본문 내용이 들어갑니다.</Text>
+<Text variant="body2">부가 설명 텍스트</Text>
+<Text variant="caption">2026. 03. 28</Text>
+<Text variant="overline">DEVELOPMENT</Text>
+<Text variant="code">const hello = "world"</Text>
+```
+
+---
+
+### color alias 활용
+
+```tsx
+// 카드 메타 정보
+<Text variant="caption" color="secondary">2026. 03. 28</Text>
+
+// 비활성 힌트
+<Text variant="body2" color="disabled">아직 게시된 포스트가 없습니다.</Text>
+
+// 인라인 링크
+<Text variant="body1">
+  자세한 내용은{' '}
+  <Text variant="body1" color="link" inline as="a">여기</Text>
+  를 참고하세요.
+</Text>
+
+// 상태 메시지
+<Text variant="body2" color="success">저장이 완료되었습니다.</Text>
+<Text variant="body2" color="error">오류가 발생했습니다.</Text>
+<Text variant="body2" color="warning">저장되지 않은 변경 사항이 있습니다.</Text>
+
+// 다크 배경 위 텍스트
+<Box sx={{ bgcolor: 'grey.900', p: 2 }}>
+  <Text variant="h4" color="inverse">어두운 배경 위 텍스트</Text>
+</Box>
+```
+
+---
+
+### clamp — 말줄임
+
+```tsx
+// 제목 1줄 말줄임
+<Text variant="h4" clamp={1}>
+  이 제목이 너무 길면 말줄임표로 잘립니다
+</Text>
+
+// 본문 2줄 말줄임 (카드 excerpt에 활용)
+<Text variant="body2" color="secondary" clamp={2}>
+  포스트의 내용 미리보기 텍스트입니다. 두 줄을 초과하면
+  자동으로 말줄임표(…)로 처리됩니다. 카드 컴포넌트에서 유용합니다.
+</Text>
+
+// 3줄 말줄임
+<Text variant="body1" clamp={3}>
+  긴 내용...
+</Text>
+```
+
+---
+
+### inline — 인라인 렌더
+
+`inline={true}` 시 `<span>` 태그로 렌더링됩니다.
+
+```tsx
+// 문장 내 강조
+<Text variant="body1">
+  이 포스트에는{' '}
+  <Text variant="body1" color="primary" inline sx={{ fontWeight: 700 }}>
+    중요한 내용
+  </Text>
+  이 포함되어 있습니다.
+</Text>
+
+// 인라인 코드
+<Text variant="body1">
+  변수를 선언할 때{' '}
+  <Text variant="code" inline>const</Text>
+  를 사용합니다.
+</Text>
+```
+
+---
+
+### as — 렌더 태그 오버라이드
+
+시맨틱 HTML 구조가 필요할 때 사용합니다.
+
+```tsx
+// h2 스타일이지만 p 태그로 렌더 (SEO / 접근성 조정)
+<Text variant="h2" as="p">섹션 설명</Text>
+
+// body1 스타일이지만 label 태그로 렌더
+<Text variant="body2" as="label" htmlFor="email">이메일</Text>
+
+// li 태그
+<ul>
+  <Text variant="body2" as="li">항목 1</Text>
+  <Text variant="body2" as="li">항목 2</Text>
+</ul>
+```
+
+---
+
+## 5. sx 확장
+
+```tsx
+// 커스텀 스타일 추가
+<Text
+  variant="h3"
+  sx={{
+    background: 'linear-gradient(135deg, #6366f1, #818cf8)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+  }}
+>
+  그라디언트 제목
+</Text>
+
+// 반응형 폰트 크기
+<Text
+  variant="h1"
+  sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' } }}
+>
+  반응형 제목
+</Text>
+```
+
+---
+
+## 6. 실제 사용 패턴 (DevLog 기준)
+
+### 포스트 카드 내 텍스트 계층
+
+```tsx
+// 카테고리 레이블
+<Text variant="overline" color="secondary">DEVELOPMENT</Text>
+
+// 카드 제목 (2줄 말줄임)
+<Text variant="subtitle1" sx={{ fontWeight: 700 }} clamp={2}>
+  React 19의 새로운 기능들을 알아보자
+</Text>
+
+// 요약 (2줄 말줄임)
+<Text variant="body2" color="secondary" clamp={2}>
+  React 19에서 추가된 useOptimistic, use 훅 등을 살펴봅니다.
+</Text>
+
+// 날짜
+<Text variant="caption" color="disabled">2026. 03. 28</Text>
+```
+
+### 섹션 헤딩
+
+```tsx
+// 섹션 레이블 + 제목 조합
+<Stack spacing={0.5}>
+  <Text variant="overline" color="secondary">PINNED</Text>
+  <Text variant="h2">추천 포스트</Text>
+</Stack>
+
+// 부제목과 함께
+<Stack spacing={1}>
+  <Text variant="h2">최근 포스트</Text>
+  <Text variant="body1" color="secondary">
+    최신 개발 이야기를 확인하세요
+  </Text>
+</Stack>
+```
+

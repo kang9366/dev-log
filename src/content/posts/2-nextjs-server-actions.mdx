@@ -1,0 +1,129 @@
+export const meta = {
+  title: 'Next.js App Router에서 Server Actions 완벽 이해하기',
+  date: '25. 11. 10',
+  tag: 'next.js',
+  slug: 'nextjs-server-actions',
+  imageUrl: 'https://images.unsplash.com/photo-1555099962-4199c345e5dd?w=1200&q=80',
+  excerpt: 'Server Actions는 Next.js 13.4부터 안정화된 기능으로, 클라이언트에서 직접 서버 함수를 호출할 수 있게 해줍니다.',
+}
+
+## Server Actions란?
+
+**Server Actions**는 Next.js App Router에서 클라이언트 컴포넌트가 서버 측 함수를 RPC처럼 직접 호출할 수 있게 해주는 기능입니다. 별도의 API Route 없이 서버 로직을 작성할 수 있습니다.
+
+```ts
+// app/actions.ts
+'use server'
+
+export async function createPost(formData: FormData) {
+  const title = formData.get('title') as string
+  await db.post.create({ data: { title } })
+  revalidatePath('/posts')
+}
+```
+
+---
+
+## 기존 방식 vs Server Actions
+
+| 항목 | 기존 API Route | Server Actions |
+|------|--------------|----------------|
+| 파일 위치 | `app/api/posts/route.ts` | `app/actions.ts` |
+| 클라이언트 코드 | `fetch('/api/posts', { method: 'POST' })` | `createPost(formData)` 직접 호출 |
+| 타입 안전성 | 수동 타입 정의 필요 | 자동 추론 |
+| 보일러플레이트 | 많음 | 최소 |
+
+---
+
+## 기본 사용법
+
+### Form과 함께 사용
+
+```tsx
+// app/new-post/page.tsx
+import { createPost } from '../actions'
+
+export default function NewPostPage() {
+  return (
+    <form action={createPost}>
+      <input name="title" placeholder="제목을 입력하세요" />
+      <button type="submit">등록</button>
+    </form>
+  )
+}
+```
+
+### `useActionState`로 상태 관리 (Next.js 14+)
+
+```tsx
+'use client'
+import { useActionState } from 'react'
+import { createPost } from '../actions'
+
+export function PostForm() {
+  const [state, formAction, isPending] = useActionState(createPost, null)
+
+  return (
+    <form action={formAction}>
+      <input name="title" />
+      {state?.error && <p>{state.error}</p>}
+      <button disabled={isPending}>
+        {isPending ? '등록 중...' : '등록'}
+      </button>
+    </form>
+  )
+}
+```
+
+---
+
+## 보안 고려사항
+
+Server Actions는 POST 엔드포인트를 자동 생성합니다. 반드시 다음을 지켜야 합니다.
+
+```ts
+'use server'
+import { auth } from '@/lib/auth'
+
+export async function deletePost(postId: string) {
+  // ✅ 항상 서버에서 인증 확인
+  const session = await auth()
+  if (!session) throw new Error('Unauthorized')
+
+  // ✅ 입력값 검증
+  if (!postId || typeof postId !== 'string') {
+    throw new Error('Invalid postId')
+  }
+
+  await db.post.delete({ where: { id: postId } })
+}
+```
+
+> ⚠️ Server Action은 클라이언트에서 직접 호출 가능하므로, 클라이언트에서 전달된 값을 **절대 신뢰하지 말고** 서버에서 반드시 재검증해야 합니다.
+
+---
+
+## `revalidatePath` vs `redirect`
+
+```ts
+'use server'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+
+export async function updatePost(id: string, data: FormData) {
+  await db.post.update({ where: { id }, data: { title: data.get('title') } })
+
+  // 캐시만 갱신 (현재 페이지 유지)
+  revalidatePath('/posts')
+
+  // 또는 다른 페이지로 이동
+  redirect(`/posts/${id}`)
+}
+```
+
+---
+
+## 마무리
+
+Server Actions는 `fetch` 보일러플레이트를 없애고 타입 안전한 서버 통신을 가능하게 합니다. 다만 인증·검증은 반드시 서버 측에서 처리해야 한다는 점을 잊지 마세요.
+

@@ -1,0 +1,158 @@
+export const meta = {
+  title: 'React 19 Transition 최적화 실전 가이드',
+  date: '25. 10. 12',
+  tag: 'react',
+  slug: 'react-19-transition',
+  imageUrl: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=1200&q=80',
+  excerpt: 'Concurrent 렌더링 환경에서 Transition과 Suspense를 조합해 UX와 성능을 동시에 잡는 전략을 소개합니다.',
+}
+
+## Concurrent 렌더링이란?
+
+React 18부터 도입된 **Concurrent 렌더링**은 렌더링 작업을 중단하고 재개할 수 있게 해줍니다. 덕분에 무거운 업데이트 중에도 사용자 입력에 즉시 응답할 수 있습니다.
+
+```
+기존 (동기):  [ 무거운 렌더링 ─────────── ] → UI 응답 불가
+Concurrent:  [ 렌더링 → 중단 → 입력처리 → 재개 ]
+```
+
+---
+
+## `useTransition` — 우선순위 분리
+
+```tsx
+import { useTransition, useState } from 'react'
+
+function SearchPage() {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Post[]>([])
+  const [isPending, startTransition] = useTransition()
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 입력값 업데이트는 즉시 (urgent)
+    setQuery(e.target.value)
+
+    // 검색 결과 업데이트는 transition (non-urgent)
+    startTransition(() => {
+      setResults(searchPosts(e.target.value))
+    })
+  }
+
+  return (
+    <>
+      <input value={query} onChange={handleChange} />
+      {isPending ? <Spinner /> : <ResultList items={results} />}
+    </>
+  )
+}
+```
+
+| 업데이트 종류 | 처리 방식 | 예시 |
+|------------|---------|------|
+| **Urgent** | 즉시 렌더 | 타이핑, 클릭 |
+| **Transition** | 중단 가능 | 탭 전환, 검색 결과 |
+
+---
+
+## `useDeferredValue` — 값 지연
+
+`useTransition`은 업데이트 코드를 감싸야 하지만, `useDeferredValue`는 **값**만 지연시킵니다. 외부 컴포넌트(라이브러리)의 업데이트를 제어할 때 유용합니다.
+
+```tsx
+import { useDeferredValue, memo } from 'react'
+
+function App() {
+  const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query)
+
+  return (
+    <>
+      <input onChange={e => setQuery(e.target.value)} />
+      {/* HeavyList는 deferredQuery가 바뀔 때만 리렌더 */}
+      <HeavyList query={deferredQuery} />
+    </>
+  )
+}
+
+// memo로 감싸야 지연 효과가 작동함
+const HeavyList = memo(({ query }: { query: string }) => {
+  const items = expensiveFilter(query)
+  return <ul>{items.map(i => <li key={i.id}>{i.name}</li>)}</ul>
+})
+```
+
+---
+
+## React 19 — `use` 훅
+
+React 19에서 `use`는 Promise와 Context를 일급 시민으로 다룹니다.
+
+```tsx
+import { use, Suspense } from 'react'
+
+// 서버에서 데이터 fetch 후 Promise를 prop으로 전달
+function PostList({ postsPromise }: { postsPromise: Promise<Post[]> }) {
+  // Suspense 경계 내에서 Promise를 직접 unwrap
+  const posts = use(postsPromise)
+
+  return (
+    <ul>
+      {posts.map(post => <li key={post.id}>{post.title}</li>)}
+    </ul>
+  )
+}
+
+// 사용
+function Page() {
+  const postsPromise = fetchPosts() // 렌더 외부에서 생성
+
+  return (
+    <Suspense fallback={<Skeleton />}>
+      <PostList postsPromise={postsPromise} />
+    </Suspense>
+  )
+}
+```
+
+---
+
+## Transition + Suspense 조합 패턴
+
+```tsx
+function TabPanel() {
+  const [tab, setTab] = useState<'recent' | 'popular'>('recent')
+  const [isPending, startTransition] = useTransition()
+
+  return (
+    <div>
+      <TabBar
+        current={tab}
+        onChange={next =>
+          startTransition(() => setTab(next))
+        }
+      />
+      {/* 탭 전환 중 stale UI를 흐리게 보여줌 */}
+      <div style={{ opacity: isPending ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+        <Suspense fallback={<Skeleton />}>
+          {tab === 'recent' ? <RecentPosts /> : <PopularPosts />}
+        </Suspense>
+      </div>
+    </div>
+  )
+}
+```
+
+`isPending`을 활용해 전환 중임을 사용자에게 **로딩 스피너 없이** 부드럽게 알릴 수 있습니다.
+
+---
+
+## 마무리
+
+| 훅 | 사용 시점 |
+|----|---------|
+| `useTransition` | 내가 제어하는 상태 업데이트를 non-urgent로 표시 |
+| `useDeferredValue` | 외부에서 내려오는 값을 지연시킬 때 |
+| `use` | Suspense 내에서 Promise를 직접 처리할 때 |
+
+Concurrent 렌더링의 진가는 이 훅들을 **조합**할 때 발휘됩니다.
+

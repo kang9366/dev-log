@@ -1,0 +1,92 @@
+# DevLog Design System
+
+DevLog 프로젝트의 디자인 시스템 문서입니다.
+**MUI v7 + Inter 폰트** 기반으로 설계되었으며, 3단계 토큰 구조를 따릅니다.
+
+---
+
+## 폴더 구조
+
+```
+src/design-system/
+├── tokens/
+│   ├── colors.ts       # Color 토큰 (Primitive → Semantic)
+│   └── typography.ts   # Typography 토큰 (scale, weight, family)
+├── theme.ts            # MUI createTheme — 토큰 주입 + 컴포넌트 오버라이드
+├── components/
+│   ├── Button.tsx      # Button 컴포넌트
+│   └── Typography.tsx  # Text 컴포넌트
+├── cards/
+│   └── BlogPostCard.tsx
+├── hero/
+│   └── PinnedPostCard.tsx
+├── navigation/
+│   ├── SliderArrowButton.tsx
+│   └── SliderDots.tsx
+└── index.ts            # Public API (단일 export 진입점)
+```
+
+---
+
+## 토큰 설계 원칙 — 3-Tier 구조
+
+```
+Primitive (원색 팔레트)
+    ↓
+Semantic  (역할 기반 토큰 — primary / text / bg / border / status)
+    ↓
+Component (컴포넌트 전용 alias — 필요 시 확장)
+```
+
+| Tier | 예시 | 설명 |
+|------|------|------|
+| Primitive | `primitives.indigo[500]` = `#6366f1` | 팔레트의 실제 색상 원값 |
+| Semantic | `colors.primary.main` | 역할 기반 토큰, Primitive를 참조 |
+| Component | `theme.palette.primary.main` | MUI 컴포넌트에 주입된 최종 값 |
+
+---
+
+## 빠른 시작
+
+### ThemeProvider 적용 (이미 적용됨 — `main.tsx`)
+
+```tsx
+import { ThemeProvider, CssBaseline } from '@mui/material'
+import { theme } from '@ds/theme'
+
+<ThemeProvider theme={theme}>
+  <CssBaseline />
+  <App />
+</ThemeProvider>
+```
+
+### 컴포넌트 import
+
+```tsx
+import { Button, Text, colors, theme } from '@ds'
+```
+
+---
+
+## 문서 목차
+
+| 문서 | 내용 |
+|------|------|
+| [01-colors.mdx](./01-colors.mdx) | Color Primitive · Semantic 토큰, 팔레트 전체 |
+| [02-typography.mdx](./02-typography.mdx) | Font Family · Weight · Size 스케일, variant 표 |
+| [03-button.mdx](./03-button.mdx) | Button variant · size · color · loading · icon |
+| [04-text.mdx](./04-text.mdx) | Text(Typography) 컴포넌트 variant · clamp · color alias |
+
+---
+
+## 기술 스택
+
+| 항목 | 버전 |
+|------|------|
+| React | 19 |
+| MUI | 7 |
+| TypeScript | 5.9 |
+| Vite | 7 |
+| Font | Inter (Google Fonts) |
+| Mono Font | JetBrains Mono / Fira Code |
+
