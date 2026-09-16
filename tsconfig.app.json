@@ -30,7 +30,6 @@
       "@feature/*": ["feature/*"],
       "@ds": ["design-system/index"],
       "@ds/*": ["design-system/*"],
-      "@content/*": ["content/*"]
     }
   },
   "include": ["src"]

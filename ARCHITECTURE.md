@@ -37,7 +37,6 @@ src/
       PinnedPosts.tsx       # 고정 포스트 섹션
       mocks/
         pinnedPosts.ts
-        recentPosts.ts
   layout/                   # (레거시, 현재는 re-export)
   assets/
   index.css                 # 전역 스타일 진입 (src 루트 유지)

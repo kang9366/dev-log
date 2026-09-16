@@ -7,6 +7,7 @@ import PostViewer from '@feature/post/PostViewer'
 import { RootLayout } from '@app/shell/RootLayout'
 import { AppThemeProvider } from '@app/providers/ThemeContext'
 import MdxEditor from "@feature/editor/MdxEditor.tsx";
+import Login from '@feature/auth/Login'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -23,6 +24,7 @@ createRoot(document.getElementById('root')!).render(
               <Routes>
                 <Route path="/"            element={<Home />} />
                 <Route path="/posts/:slug" element={<PostViewer />} />
+                <Route path="/login"       element={<Login />} />
               </Routes>
             </RootLayout>
           } />

@@ -1,12 +1,20 @@
-import { Box, Container, Stack, Typography, InputBase, IconButton } from '@mui/material'
+import { Box, Chip, Container, Stack, InputBase, IconButton } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
+import EditIcon from '@mui/icons-material/Edit'
+import LogoutIcon from '@mui/icons-material/Logout'
+import { useNavigate } from 'react-router-dom'
 import { useThemeMode } from '@app/providers/ThemeContext'
+import { supabase } from '../../lib/supabase'
+import { useSession } from '../../lib/useSession'
+import { AdminLoginButton } from '@feature/auth/AdminLoginButton'
 
 export const Banner = () => {
   const { mode, toggleMode } = useThemeMode()
   const isDark = mode === 'dark'
+  const navigate = useNavigate()
+  const { session, isAdmin, ready } = useSession()
 
   return (
     <Box
@@ -28,25 +36,7 @@ export const Banner = () => {
       }}
     >
       <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          {/* 로고 + 메뉴 */}
-          <Stack direction="row" spacing={{ xs: 2, md: 5 }} alignItems="center">
-            <Typography variant="h5" sx={{ fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              MyLog
-            </Typography>
-            <Stack direction="row" spacing={3} sx={{ display: { xs: 'none', md: 'flex' } }}>
-              {['Development', 'Study', 'Publish', 'CS'].map((menu) => (
-                <Typography
-                  key={menu}
-                  variant="body1"
-                  sx={{ cursor: 'pointer', '&:hover': { color: 'text.secondary' } }}
-                >
-                  {menu}
-                </Typography>
-              ))}
-            </Stack>
-          </Stack>
-
+        <Stack direction="row" alignItems="center" justifyContent="flex-end">
           {/* 우측: 검색창 + 다크모드 토글 */}
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box
@@ -67,6 +57,21 @@ export const Banner = () => {
               />
               <SearchIcon sx={{ color: 'text.secondary', fontSize: 20, flexShrink: 0 }} />
             </Box>
+
+            {isAdmin && (
+              <>
+                <Chip label="관리자 모드" size="small" color="primary" variant="outlined" sx={{ display: { xs: 'none', sm: 'flex' } }} />
+                <IconButton onClick={() => navigate('/editor')} aria-label="새 글 쓰기" title="새 글 쓰기">
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </>
+            )}
+            {session && (
+              <IconButton onClick={() => supabase.auth.signOut()} aria-label="로그아웃" title="로그아웃">
+                <LogoutIcon fontSize="small" />
+              </IconButton>
+            )}
+            {ready && !session && <AdminLoginButton />}
 
             <IconButton
               onClick={toggleMode}

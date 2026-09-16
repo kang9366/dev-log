@@ -9,35 +9,17 @@ import ArrowBackIcon     from '@mui/icons-material/ArrowBack'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import EditIcon          from '@mui/icons-material/Edit'
 import { mdxComponents } from './MdxComponents'
+import { useRuntimeMdx } from '@feature/editor/useRuntimeMdx'
+import { supabase } from '../../lib/supabase'
+import { useSession } from '../../lib/useSession'
+import { formatPostDate, type PostRecord } from '@core/domain/post'
 
 // ── 타입 ─────────────────────────────────────
-interface PostMeta {
-  title: string
-  date: string
-  tag: string
-  excerpt: string
-  imageUrl: string
-  slug: string
-}
-
 interface TocItem {
   id: string
   text: string
   level: 2 | 3
 }
-
-// ── glob ─────────────────────────────────────
-const postModules = import.meta.glob<{
-  default: React.ComponentType
-  meta: PostMeta
-}>('/src/content/posts/*.mdx')
-
-const slugToPath: Record<string, string> = Object.fromEntries(
-  Object.keys(postModules).map((path) => {
-    const slug = path.split('/').pop()!.replace(/\.mdx$/, '')
-    return [slug, path]
-  })
-)
 
 const tagColor: Record<string, string> = {
   react:           '#61dafb',
@@ -51,7 +33,7 @@ const tagColor: Record<string, string> = {
 type ViewerState =
   | { kind: 'loading' }
   | { kind: 'notFound' }
-  | { kind: 'ready'; Content: React.ComponentType; meta: PostMeta }
+  | { kind: 'ready'; post: PostRecord }
 
 // ── TOC 컴포넌트 ──────────────────────────────
 function TableOfContents({
@@ -147,37 +129,43 @@ export default function PostViewer() {
   const { slug }  = useParams<{ slug: string }>()
   const navigate  = useNavigate()
   const articleRef = useRef<HTMLElement>(null)
+  const { isAdmin } = useSession()
 
   const [state,    setState]    = useState<ViewerState>({ kind: 'loading' })
   const [tocItems, setTocItems] = useState<TocItem[]>([])
   const [activeId, setActiveId] = useState('')
 
-  // MDX 로드
+  // 포스트 로드 (Supabase)
   useEffect(() => {
     let cancelled = false
-    const path   = slug ? slugToPath[slug] : undefined
-    const loader = path ? postModules[path] : undefined
 
-    if (!loader) {
-      Promise.resolve().then(() => { if (!cancelled) setState({ kind: 'notFound' }) })
-      return () => { cancelled = true }
-    }
-
-    loader().then((mod) => {
-      if (!cancelled) {
-        setState({ kind: 'ready', Content: mod.default, meta: mod.meta })
+    supabase
+      .from('posts')
+      .select('*')
+      .eq('slug', slug ?? '')
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) console.error(error)
+        if (!data) {
+          setState({ kind: 'notFound' })
+          return
+        }
+        setState({ kind: 'ready', post: data })
         window.scrollTo({ top: 0, behavior: 'instant' })
-      }
-    }).catch(() => {
-      Promise.resolve().then(() => { if (!cancelled) setState({ kind: 'notFound' }) })
-    })
+      })
 
     return () => { cancelled = true }
   }, [slug])
 
+  // 본문 MDX 브라우저 컴파일
+  const { Component: Content, error: mdxError } = useRuntimeMdx(
+    state.kind === 'ready' ? state.post.body : ''
+  )
+
   // 렌더 후 헤딩 수집 — id가 없어도 직접 생성·부여
   useEffect(() => {
-    if (state.kind !== 'ready') return
+    if (state.kind !== 'ready' || !Content) return
 
     function collectHeadings() {
       const article = articleRef.current
@@ -232,7 +220,7 @@ export default function PostViewer() {
     }, 200)
 
     return () => clearTimeout(timer)
-  }, [state.kind])
+  }, [state.kind, Content])
 
   // 활성 헤딩 추적 — rAF 스로틀 scroll 기반
   // IntersectionObserver 대비 장점:
@@ -288,7 +276,7 @@ export default function PostViewer() {
   }, [tocItems])
 
   // ── 로딩 / 404 ───────────────────────────────
-  if (state.kind === 'loading') {
+  if (state.kind === 'loading' || (state.kind === 'ready' && !Content && !mdxError)) {
     return (
       <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <CircularProgress size={36} />
@@ -308,8 +296,8 @@ export default function PostViewer() {
     )
   }
 
-  const { Content, meta } = state
-  const accent = tagColor[meta.tag] ?? '#6366f1'
+  const { post } = state
+  const accent = tagColor[post.tag] ?? '#6366f1'
 
   return (
     <Box sx={{ pb: 10 }}>
@@ -323,15 +311,18 @@ export default function PostViewer() {
           <Typography variant="body2" component="span">목록으로</Typography>
         </IconButton>
 
-        <Tooltip title="MDX 편집">
-          <IconButton
-            onClick={() => navigate(`/editor/${slug}`)}
-            sx={{ borderRadius: '8px', px: 1.5, py: 0.75, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}
-          >
-            <EditIcon fontSize="small" />
-            <Typography variant="body2" component="span" sx={{ ml: 0.5 }}>편집</Typography>
-          </IconButton>
-        </Tooltip>
+        {isAdmin && (
+          <Tooltip title="MDX 편집">
+            <IconButton
+              onClick={() => navigate(`/editor/${slug}`)}
+              sx={{ borderRadius: '8px', px: 1.5, py: 0.75, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}
+            >
+              <EditIcon fontSize="small" />
+              <Typography variant="body2" component="span" sx={{ ml: 0.5 }}>편집</Typography>
+            </IconButton>
+          </Tooltip>
+        )}
+        {!post.published && <Chip label="임시저장" size="small" />}
       </Box>
 
       {/* 2열 레이아웃: 본문 + TOC */}
@@ -342,7 +333,7 @@ export default function PostViewer() {
           <Stack spacing={2} mb={4}>
             <Box>
               <Chip
-                label={meta.tag}
+                label={post.tag}
                 size="small"
                 sx={{
                   bgcolor: `${accent}18`,
@@ -360,28 +351,30 @@ export default function PostViewer() {
               component="h1"
               sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.03em', color: 'text.primary' }}
             >
-              {meta.title}
+              {post.title}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.75, fontSize: '1.0625rem' }}>
-              {meta.excerpt}
+              {post.excerpt}
             </Typography>
             <Stack direction="row" alignItems="center" spacing={0.75}>
               <CalendarTodayIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
-              <Typography variant="caption" color="text.disabled">{meta.date}</Typography>
+              <Typography variant="caption" color="text.disabled">{formatPostDate(post.published_at)}</Typography>
             </Stack>
           </Stack>
 
           <Box
             component="img"
-            src={meta.imageUrl}
-            alt={meta.title}
+            src={post.image_url}
+            alt={post.title}
             sx={{ width: '100%', height: { xs: 200, sm: 280, md: 360 }, objectFit: 'cover', borderRadius: '12px', display: 'block', mb: 5 }}
           />
 
           <Divider sx={{ mb: 5 }} />
 
           <MDXProvider components={mdxComponents}>
-            <Content />
+            {Content
+              ? <Content />
+              : <Typography color="error">본문을 렌더링하지 못했습니다: {mdxError}</Typography>}
           </MDXProvider>
         </Box>
 

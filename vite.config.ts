@@ -28,7 +28,6 @@ export default defineConfig({
       '@core':    resolve(__dirname, 'src/core'),
       '@feature': resolve(__dirname, 'src/feature'),
       '@ds':      resolve(__dirname, 'src/design-system'),
-      '@content': resolve(__dirname, 'src/content'),
     },
   },
   define: {

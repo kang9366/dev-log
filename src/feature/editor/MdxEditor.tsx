@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
@@ -22,6 +22,9 @@ import { mdxComponents } from '../post/MdxComponents'
 import { useRuntimeMdx } from './useRuntimeMdx'
 import { useThemeMode } from '@app/providers/ThemeContext'
 import { Banner } from '@app/shell/Banner'
+import { supabase } from '../../lib/supabase'
+import { useSession } from '../../lib/useSession'
+import { formatPostDate } from '@core/domain/post'
 
 const TEAL = '#12b886'
 
@@ -66,34 +69,27 @@ const PALETTE = [
   { label: '분홍',     value: '#ec4899' },
 ]
 
-// ── raw MDX 로드 ─────────────────────────────────────────────
-const rawModules = import.meta.glob<{ default: string }>('/src/content/posts/*.mdx', { query: '?raw' })
-const slugToRawPath: Record<string, string> = Object.fromEntries(
-  Object.keys(rawModules).map((p) => [p.split('/').pop()!.replace(/\.mdx$/, ''), p])
-)
-
-// ── MDX 파싱 ─────────────────────────────────────────────────
+// ── 편집 대상 ────────────────────────────────────────────────
 interface MdxParts {
   title: string; tag: string; date: string
   slug: string; imageUrl: string; excerpt: string; body: string
 }
 
-function parseMdx(raw: string): MdxParts {
-  const get = (k: string) => raw.match(new RegExp(`${k}:\\s*['"\`]([^'"\`]*?)['"\`]`))?.[1] ?? ''
-  let depth = 0, started = false, endIdx = raw.length
-  for (let i = 0; i < raw.length; i++) {
-    if (!started && raw.slice(i).startsWith('export const meta')) started = true
-    if (started) {
-      if (raw[i] === '{') depth++
-      else if (raw[i] === '}') { depth--; if (depth === 0) { endIdx = i + 1; break } }
-    }
-  }
-  return {
-    title: get('title'), tag: get('tag'), date: get('date'),
-    slug: get('slug'), imageUrl: get('imageUrl'), excerpt: get('excerpt'),
-    body: raw.slice(endIdx).trim(),
-  }
-}
+/** 제목 → URL slug (한글 유지). 비면 시간 기반 */
+const toSlug = (title: string) =>
+  title.trim().toLowerCase()
+    .replace(/[^\w가-힣\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '') || `post-${Date.now()}`
+
+/** 본문 MDX → 목록용 요약 (마크다운 기호·코드블록 제거, 120자) */
+const toExcerpt = (body: string) =>
+  body.replace(/```[\s\S]*?```/g, '')
+    .replace(/[#>*_`~|[\]()!-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120)
 
 const DEFAULT_PARTS: MdxParts = {
   title: '', tag: '',
@@ -320,6 +316,19 @@ export default function MdxEditor() {
   const isDark = mode === 'dark'
   const [parts, setParts]         = useState<MdxParts>(DEFAULT_PARTS)
   const [loading, setLoading]     = useState(!!slug)
+  const [postId, setPostId]       = useState<number | null>(null)
+  const [published, setPublished] = useState(false)
+  const [saving, setSaving]       = useState<'draft' | 'publish' | null>(null)
+  const [saveMsg, setSaveMsg]     = useState<{ ok: boolean; text: string } | null>(null)
+  const location = useLocation()
+  const { isAdmin, ready: sessionReady } = useSession()
+
+  // 관리자 아니면 → 로그인 페이지로
+  useEffect(() => {
+    if (sessionReady && !isAdmin) {
+      navigate(`/login?next=${encodeURIComponent(location.pathname)}`, { replace: true })
+    }
+  }, [sessionReady, isAdmin, navigate, location.pathname])
   const [isDragOver, setDragOver] = useState(false)
   const [selPicker, setSelPicker] = useState<{
     x: number; y: number; from: number; to: number
@@ -327,15 +336,24 @@ export default function MdxEditor() {
   const viewRef = useRef<EditorView | null>(null)
   const { pct, ref: containerRef, onDown } = useSplitResize(50)
 
-  // 파일 로드
+  // 포스트 로드 (Supabase)
   useEffect(() => {
     if (!slug) return
-    const path = slugToRawPath[slug]
-    const loader = path ? rawModules[path] : undefined
     let cancelled = false
-    if (!loader) { Promise.resolve().then(() => { if (!cancelled) setLoading(false) }); return () => { cancelled = true } }
-    loader().then(mod => { if (!cancelled) { setParts(parseMdx(mod.default)); setLoading(false) } })
-            .catch(() => { if (!cancelled) setLoading(false) })
+    supabase.from('posts').select('*').eq('slug', slug).maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) console.error(error)
+        if (data) {
+          setParts({
+            title: data.title, tag: data.tag, date: formatPostDate(data.published_at),
+            slug: data.slug, imageUrl: data.image_url, excerpt: data.excerpt, body: data.body,
+          })
+          setPostId(data.id)
+          setPublished(data.published)
+        }
+        setLoading(false)
+      })
     return () => { cancelled = true }
   }, [slug])
 
@@ -424,6 +442,48 @@ export default function MdxEditor() {
 
   // MDX 컴파일 - 50ms 디바운스: 빠른 타이핑 중 컴파일 스킵, 살짝 멈추면 즉시 반영
   const { Component, error } = useRuntimeMdx(parts.body, 50)
+
+  // 저장: publish=false 임시저장, true 출간
+  const save = async (publish: boolean) => {
+    if (!parts.title.trim()) {
+      setSaveMsg({ ok: false, text: '제목을 입력하세요.' })
+      return
+    }
+    setSaving(publish ? 'publish' : 'draft')
+    setSaveMsg(null)
+
+    const row = {
+      title: parts.title.trim(),
+      tag: parts.tag.trim(),
+      body: parts.body,
+      image_url: parts.imageUrl,
+      excerpt: parts.excerpt || toExcerpt(parts.body),
+      // 출간한 글을 임시저장해도 비공개로 되돌리지 않음
+      published: publish || published,
+    }
+    const { data, error } = postId
+      ? await supabase.from('posts').update(row).eq('id', postId).select('id, slug, published').single()
+      : await supabase.from('posts').insert({ ...row, slug: toSlug(parts.title) }).select('id, slug, published').single()
+
+    setSaving(null)
+    if (error) {
+      console.error(error)
+      setSaveMsg({
+        ok: false,
+        text: error.code === '23505' ? '같은 주소(slug)의 글이 이미 있습니다. 제목을 바꿔주세요.' : `저장 실패: ${error.message}`,
+      })
+      return
+    }
+
+    setPostId(data.id)
+    setPublished(data.published)
+    if (publish) {
+      navigate(`/posts/${data.slug}`)
+    } else {
+      setSaveMsg({ ok: true, text: '임시저장됨' })
+      if (!slug) navigate(`/editor/${data.slug}`, { replace: true })
+    }
+  }
 
   // CodeMirror 익스텐션
   const cmExts = useMemo(() => [
@@ -611,8 +671,13 @@ export default function MdxEditor() {
       <Box sx={{ flexShrink: 0, height: 56, display: 'flex', alignItems: 'center', px: 3, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
         <Button variant="ghost" startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />} onClick={() => navigate(-1)} sx={{ fontSize: 14 }}>나가기</Button>
         <Box sx={{ flex: 1 }} />
-        <Button variant="text" sx={{ color: TEAL, fontWeight: 600, fontSize: 14, mr: 1, '&:hover': { bgcolor: `${TEAL}14` } }}>임시저장</Button>
-        <Button variant="contained" sx={{ bgcolor: TEAL, color: '#fff', fontWeight: 600, fontSize: 14, borderRadius: '20px', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#0ca678', boxShadow: 'none' } }}>출간하기</Button>
+        {saveMsg && (
+          <Text variant="body2" role="status" sx={{ mr: 2, color: saveMsg.ok ? 'text.secondary' : 'error.main' }}>{saveMsg.text}</Text>
+        )}
+        {!published && (
+          <Button variant="text" onClick={() => save(false)} loading={saving === 'draft'} disabled={!!saving} sx={{ color: TEAL, fontWeight: 600, fontSize: 14, mr: 1, '&:hover': { bgcolor: `${TEAL}14` } }}>임시저장</Button>
+        )}
+        <Button variant="contained" onClick={() => save(true)} loading={saving === 'publish'} disabled={!!saving} sx={{ bgcolor: TEAL, color: '#fff', fontWeight: 600, fontSize: 14, borderRadius: '20px', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#0ca678', boxShadow: 'none' } }}>{published ? '수정하기' : '출간하기'}</Button>
       </Box>
     </Box>
   )
