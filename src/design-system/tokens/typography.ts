@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────
 export const fontFamily = {
   sans: [
+    'var(--font-inter)', // next/font 로 로드한 Inter
     'Inter',
     '-apple-system',
     'BlinkMacSystemFont',

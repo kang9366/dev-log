@@ -1,29 +1,30 @@
+'use client'
 import { Box, Chip, Container, Stack, InputBase, IconButton } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import EditIcon from '@mui/icons-material/Edit'
 import LogoutIcon from '@mui/icons-material/Logout'
-import { useNavigate } from 'react-router-dom'
-import { useThemeMode } from '@app/providers/ThemeContext'
-import { supabase } from '../../lib/supabase'
-import { useSession } from '../../lib/useSession'
+import { useRouter } from 'next/navigation'
+import { useThemeMode } from '@shell/ThemeContext'
+import { supabase } from '@lib/supabase'
+import { useSession } from '@lib/useSession'
 import { AdminLoginButton } from '@feature/auth/AdminLoginButton'
 
 export const Banner = () => {
   const { mode, toggleMode } = useThemeMode()
   const isDark = mode === 'dark'
-  const navigate = useNavigate()
+  const router = useRouter()
   const { session, isAdmin, ready } = useSession()
 
   return (
     <Box
       component="header"
-      sx={{
+      sx={(theme) => ({
         position: 'sticky',
         top: 0,
         zIndex: 1100,
-        bgcolor: isDark ? 'rgba(23, 23, 23, 0.85)' : 'rgba(255, 255, 255, 0.6)',
+        bgcolor: 'rgba(255, 255, 255, 0.6)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         width: '100%',
@@ -33,23 +34,25 @@ export const Banner = () => {
         borderBottom: '1px solid',
         borderColor: 'divider',
         transition: 'background-color 0.2s ease',
-      }}
+        ...theme.applyStyles('dark', { bgcolor: 'rgba(23, 23, 23, 0.85)' }),
+      })}
     >
       <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
         <Stack direction="row" alignItems="center" justifyContent="flex-end">
           {/* 우측: 검색창 + 다크모드 토글 */}
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box
-              sx={{
+              sx={(theme) => ({
                 display: 'flex',
                 alignItems: 'center',
-                bgcolor: isDark ? 'grey.800' : 'grey.200',
+                bgcolor: 'grey.200',
+                ...theme.applyStyles('dark', { bgcolor: 'grey.800' }),
                 borderRadius: '20px',
                 px: 2,
                 py: 0.5,
                 width: { xs: '130px', sm: '180px', md: '240px' },
                 transition: 'background-color 0.2s ease, width 0.2s ease',
-              }}
+              })}
             >
               <InputBase
                 placeholder="검색어를 입력해주세요"
@@ -61,7 +64,7 @@ export const Banner = () => {
             {isAdmin && (
               <>
                 <Chip label="관리자 모드" size="small" color="primary" variant="outlined" sx={{ display: { xs: 'none', sm: 'flex' } }} />
-                <IconButton onClick={() => navigate('/editor')} aria-label="새 글 쓰기" title="새 글 쓰기">
+                <IconButton onClick={() => router.push('/editor')} aria-label="새 글 쓰기" title="새 글 쓰기">
                   <EditIcon fontSize="small" />
                 </IconButton>
               </>
@@ -76,17 +79,20 @@ export const Banner = () => {
             <IconButton
               onClick={toggleMode}
               aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
-              sx={{
-                bgcolor: isDark ? 'grey.100' : 'grey.900',
-                color: isDark ? 'grey.900' : 'grey.100',
+              sx={(theme) => ({
+                bgcolor: 'grey.900',
+                color: 'grey.100',
                 width: 36,
                 height: 36,
                 flexShrink: 0,
                 transition: 'background-color 0.2s ease, color 0.2s ease',
-                '&:hover': {
-                  bgcolor: isDark ? 'grey.300' : 'grey.700',
-                },
-              }}
+                '&:hover': { bgcolor: 'grey.700' },
+                ...theme.applyStyles('dark', {
+                  bgcolor: 'grey.100',
+                  color: 'grey.900',
+                  '&:hover': { bgcolor: 'grey.300' },
+                }),
+              })}
             >
               {isDark ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
             </IconButton>

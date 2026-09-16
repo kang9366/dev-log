@@ -1,7 +1,6 @@
 import { Box, GlobalStyles } from '@mui/material'
 import type { PropsWithChildren } from 'react'
 import { Banner } from './Banner'
-import '../../index.css'
 
 const globalStyles = (
   <GlobalStyles

@@ -1,13 +1,25 @@
+'use client'
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Stack, TextField, Typography } from '@mui/material'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Button } from '@ds/components/Button'
-import { supabase } from '../../lib/supabase'
-import { useSession } from '../../lib/useSession'
+import { supabase } from '@lib/supabase'
+import { useSession } from '@lib/useSession'
+
+/** 로컬 개발(next dev): 메일 없이 아무 번호나 입력하면 관리자 로그인 (/api/dev-login) */
+const DEV_LOGIN = process.env.NODE_ENV === 'development'
 
 /** Edge Function(admin-otp) 호출. 실패 시 서버 에러 코드 반환 */
 async function callAdminOtp(body: { action: 'send' } | { action: 'verify'; code: string }) {
+  if (DEV_LOGIN) {
+    if (body.action === 'send') return { data: null, errorCode: null }
+    const res = await fetch('/api/dev-login', { method: 'POST' })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) console.error('[dev-login]', json)
+    return res.ok ? { data: json, errorCode: null } : { data: null, errorCode: 'dev_login_failed' }
+  }
+
   const { data, error } = await supabase.functions.invoke('admin-otp', { body })
   if (!error) return { data, errorCode: null }
   const errorCode = error instanceof FunctionsHttpError
@@ -49,7 +61,9 @@ export function LoginForm() {
       setLoading(false)
       setError(errorCode === 'rate_limited'
         ? '시도가 너무 많습니다. 잠시 후 다시 시도해주세요.'
-        : '인증번호가 올바르지 않거나 만료되었습니다.')
+        : errorCode === 'dev_login_failed'
+          ? '개발용 로그인 실패. .env.local 의 SUPABASE_SECRET_KEY 와 서버 로그를 확인하세요.'
+          : '인증번호가 올바르지 않거나 만료되었습니다.')
       return
     }
     // 로그인되면 상단 바/페이지가 세션 변경을 받아 관리자 모드로 전환됨
@@ -73,7 +87,9 @@ export function LoginForm() {
   return (
     <Stack component="form" onSubmit={verifyCode} spacing={2}>
       <Typography variant="body2" color="text.secondary">
-        관리자 이메일로 보낸 인증번호를 입력하세요.
+        {DEV_LOGIN
+          ? '개발 모드: 메일을 보내지 않았습니다. 아무 번호나 입력하세요.'
+          : '관리자 이메일로 보낸 인증번호를 입력하세요.'}
       </Typography>
       <TextField
         label="인증번호"
@@ -92,8 +108,8 @@ export function LoginForm() {
 }
 
 export default function Login() {
-  const navigate = useNavigate()
-  const [params] = useSearchParams()
+  const router = useRouter()
+  const params = useSearchParams()
   const { isAdmin } = useSession()
 
   // 내부 경로만 허용 (open redirect 방지)
@@ -102,8 +118,8 @@ export default function Login() {
 
   // 로그인되면 원래 가려던 곳으로
   useEffect(() => {
-    if (isAdmin) navigate(target, { replace: true })
-  }, [isAdmin, navigate, target])
+    if (isAdmin) router.replace(target)
+  }, [isAdmin, router, target])
 
   return (
     <Stack spacing={2} sx={{ maxWidth: 360, mx: 'auto', py: 10 }}>

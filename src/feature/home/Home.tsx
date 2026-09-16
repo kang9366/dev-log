@@ -1,36 +1,17 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Box, Stack, Typography } from '@mui/material'
 import { PinnedPosts } from './PinnedPosts'
 import { BlogPostCard } from '@ds/cards/BlogPostCard'
 import { pinnedPosts } from './mocks/pinnedPosts'
-import { supabase } from '../../lib/supabase'
-import { formatPostDate, type PostRecord } from '@core/domain/post'
+import type { PostSummary } from '@lib/posts'
+import { formatPostDate } from '@core/domain/post'
 import { toggleLike, type LikeCounts, type LikeState } from '@core/use-cases/toggleLike'
 
-type PostSummary = Omit<PostRecord, 'body'>
-
-export default function Home() {
-  const navigate = useNavigate()
-
-  const [posts, setPosts] = useState<PostSummary[]>([])
-  const [loadError, setLoadError] = useState(false)
-
-  useEffect(() => {
-    supabase
-      .from('posts')
-      .select('id, slug, title, tag, excerpt, image_url, published_at, published')
-      .eq('published', true)
-      .order('published_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error(error)
-          setLoadError(true)
-        } else {
-          setPosts(data)
-        }
-      })
-  }, [])
+/** 홈. 글 목록은 서버 페이지가 조회해서 넘겨줌 */
+export default function Home({ posts }: { posts: PostSummary[] }) {
+  const router = useRouter()
 
   const [likedPosts, setLikedPosts] = useState<LikeState>({})
   const [likeCounts, setLikeCounts] = useState<LikeCounts>({})
@@ -48,11 +29,6 @@ export default function Home() {
         <Typography mt={1} variant="body1" color="textSecondary">
           모든 포스트
         </Typography>
-        {loadError && (
-          <Typography mt={2} color="error">
-            포스트를 불러오지 못했습니다.
-          </Typography>
-        )}
         <Box
           display="grid"
           gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }}
@@ -70,7 +46,7 @@ export default function Home() {
               liked={likedPosts[post.id]}
               date={formatPostDate(post.published_at)}
               onLike={() => handleLike(post.id)}
-              onClick={() => navigate(`/posts/${post.slug}`)}
+              onClick={() => router.push(`/posts/${post.slug}`)}
               sx={{ maxWidth: '100%' }}
             />
           ))}

@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 /**
  * MDX 렌더링 시 HTML 요소를 MUI 기반 스타일 컴포넌트로 교체.
  * MDXProvider의 components prop에 전달합니다.
@@ -290,19 +289,17 @@ function Code({ children }: ComponentPropsWithoutRef<'code'>) {
   return (
     <Box
       component="code"
-      sx={{
+      sx={(theme) => ({
         px: 0.75, py: 0.25,
         borderRadius: '5px',
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),   // ← theme-aware
-        color: (theme) =>
-          theme.palette.mode === 'dark'
-            ? theme.palette.primary.light
-            : theme.palette.primary.dark,                              // ← theme-aware
+        bgcolor: alpha(theme.palette.primary.main, 0.1),
+        color: theme.palette.primary.dark,
         fontFamily: fontFamily.mono,
         fontSize: '0.85em',
         border: '1px solid',
-        borderColor: (theme) => alpha(theme.palette.primary.main, 0.25), // ← theme-aware
-      }}
+        borderColor: alpha(theme.palette.primary.main, 0.25),
+        ...theme.applyStyles('dark', { color: theme.palette.primary.light }),
+      })}
     >
       {children}
     </Box>
@@ -439,8 +436,15 @@ function Em({ children }: ComponentPropsWithoutRef<'em'>) {
   )
 }
 
+// ── 글자 색 (에디터 색상 피커: <span data-color="#hex">) ──
+function Span({ children, 'data-color': color }: ComponentPropsWithoutRef<'span'> & { 'data-color'?: string }) {
+  const safeColor = color && /^#[0-9a-f]{3,8}$/i.test(color) ? color : undefined
+  return <span style={safeColor ? { color: safeColor } : undefined}>{children}</span>
+}
+
 // ── Public export ─────────────────────────────
 export const mdxComponents = {
+  span:       Span,
   h2:         H2,
   h3:         H3,
   h4:         H4,

@@ -1,3 +1,4 @@
+'use client'
 import { Box } from '@mui/material'
 import type { Post } from '@core/domain/post'
 import { useSlider } from '@core/hooks/useSlider'

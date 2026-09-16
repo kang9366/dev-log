@@ -19,7 +19,7 @@ export {
 export type { TypographyVariant } from './tokens/typography'
 
 // ── Theme ─────────────────────────────────────────────
-export { theme, createAppTheme } from './theme'
+export { theme } from './theme'
 
 // ── Components ────────────────────────────────────────
 export { Button } from './components/Button'

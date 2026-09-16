@@ -1,3 +1,4 @@
+'use client'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogTitle, IconButton } from '@mui/material'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'

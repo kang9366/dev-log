@@ -1,5 +1,6 @@
+'use client'
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useRouter, usePathname } from 'next/navigation'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
@@ -20,10 +21,10 @@ import InsertPhotoIcon         from '@mui/icons-material/InsertPhoto'
 import CodeIcon                from '@mui/icons-material/Code'
 import { mdxComponents } from '../post/MdxComponents'
 import { useRuntimeMdx } from './useRuntimeMdx'
-import { useThemeMode } from '@app/providers/ThemeContext'
-import { Banner } from '@app/shell/Banner'
-import { supabase } from '../../lib/supabase'
-import { useSession } from '../../lib/useSession'
+import { useThemeMode } from '@shell/ThemeContext'
+import { Banner } from '@shell/Banner'
+import { supabase } from '@lib/supabase'
+import { useSession } from '@lib/useSession'
 import { formatPostDate } from '@core/domain/post'
 
 const TEAL = '#12b886'
@@ -311,7 +312,7 @@ const PreviewPanel = memo(function PreviewPanel({
 // ── 메인 ─────────────────────────────────────────────────────
 export default function MdxEditor() {
   const { slug }   = useParams<{ slug?: string }>()
-  const navigate   = useNavigate()
+  const router     = useRouter()
   const { mode } = useThemeMode()
   const isDark = mode === 'dark'
   const [parts, setParts]         = useState<MdxParts>(DEFAULT_PARTS)
@@ -320,15 +321,15 @@ export default function MdxEditor() {
   const [published, setPublished] = useState(false)
   const [saving, setSaving]       = useState<'draft' | 'publish' | null>(null)
   const [saveMsg, setSaveMsg]     = useState<{ ok: boolean; text: string } | null>(null)
-  const location = useLocation()
+  const pathname = usePathname()
   const { isAdmin, ready: sessionReady } = useSession()
 
   // 관리자 아니면 → 로그인 페이지로
   useEffect(() => {
     if (sessionReady && !isAdmin) {
-      navigate(`/login?next=${encodeURIComponent(location.pathname)}`, { replace: true })
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`)
     }
-  }, [sessionReady, isAdmin, navigate, location.pathname])
+  }, [sessionReady, isAdmin, router, pathname])
   const [isDragOver, setDragOver] = useState(false)
   const [selPicker, setSelPicker] = useState<{
     x: number; y: number; from: number; to: number
@@ -416,9 +417,9 @@ export default function MdxEditor() {
     const selected = view.state.sliceDoc(from, to)
 
     const insert = color
-      ? `<span style={{ color: '${color}' }}>${selected}</span>`
+      ? `<span data-color="${color}">${selected}</span>`
       // 색상 제거: 선택 범위 내 color span 을 텍스트만 남김
-      : selected.replace(/<span\s+style=\{\{[^}]*\}\}[^>]*>([\s\S]*?)<\/span>/g, '$1')
+      : selected.replace(/<span\s+data-color="[^"]*"[^>]*>([\s\S]*?)<\/span>/g, '$1')
 
     view.dispatch({
       changes: { from, to, insert },
@@ -478,10 +479,10 @@ export default function MdxEditor() {
     setPostId(data.id)
     setPublished(data.published)
     if (publish) {
-      navigate(`/posts/${data.slug}`)
+      router.push(`/posts/${data.slug}`)
     } else {
       setSaveMsg({ ok: true, text: '임시저장됨' })
-      if (!slug) navigate(`/editor/${data.slug}`, { replace: true })
+      if (!slug) router.replace(`/editor/${data.slug}`)
     }
   }
 
@@ -669,7 +670,7 @@ export default function MdxEditor() {
 
       {/* ── 하단 바 ── */}
       <Box sx={{ flexShrink: 0, height: 56, display: 'flex', alignItems: 'center', px: 3, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
-        <Button variant="ghost" startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />} onClick={() => navigate(-1)} sx={{ fontSize: 14 }}>나가기</Button>
+        <Button variant="ghost" startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />} onClick={() => router.back()} sx={{ fontSize: 14 }}>나가기</Button>
         <Box sx={{ flex: 1 }} />
         {saveMsg && (
           <Text variant="body2" role="status" sx={{ mr: 2, color: saveMsg.ok ? 'text.secondary' : 'error.main' }}>{saveMsg.text}</Text>

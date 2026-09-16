@@ -1,18 +1,17 @@
+'use client'
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { MDXProvider } from '@mdx-js/react'
+import { useRouter } from 'next/navigation'
 import {
-  Box, Chip, CircularProgress, Divider,
+  Box, Chip, Divider,
   IconButton, Stack, Typography, Tooltip,
 } from '@mui/material'
 import ArrowBackIcon     from '@mui/icons-material/ArrowBack'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import EditIcon          from '@mui/icons-material/Edit'
-import { mdxComponents } from './MdxComponents'
-import { useRuntimeMdx } from '@feature/editor/useRuntimeMdx'
-import { supabase } from '../../lib/supabase'
-import { useSession } from '../../lib/useSession'
-import { formatPostDate, type PostRecord } from '@core/domain/post'
+import { MdxContent } from './MdxContent'
+import { useSession } from '@lib/useSession'
+import { formatPostDate } from '@core/domain/post'
+import type { PostSummary } from '@lib/posts'
 
 // ── 타입 ─────────────────────────────────────
 interface TocItem {
@@ -29,11 +28,6 @@ const tagColor: Record<string, string> = {
   performance:     '#f5a623',
   'design-system': '#6366f1',
 }
-
-type ViewerState =
-  | { kind: 'loading' }
-  | { kind: 'notFound' }
-  | { kind: 'ready'; post: PostRecord }
 
 // ── TOC 컴포넌트 ──────────────────────────────
 function TableOfContents({
@@ -125,48 +119,17 @@ function TableOfContents({
 }
 
 // ── PostViewer ────────────────────────────────
-export default function PostViewer() {
-  const { slug }  = useParams<{ slug: string }>()
-  const navigate  = useNavigate()
+/** 글 상세. 데이터와 컴파일된 본문(code)은 서버 페이지가 넘겨줌 */
+export default function PostViewer({ post, code }: { post: PostSummary; code: string }) {
+  const router = useRouter()
   const articleRef = useRef<HTMLElement>(null)
   const { isAdmin } = useSession()
 
-  const [state,    setState]    = useState<ViewerState>({ kind: 'loading' })
   const [tocItems, setTocItems] = useState<TocItem[]>([])
   const [activeId, setActiveId] = useState('')
 
-  // 포스트 로드 (Supabase)
-  useEffect(() => {
-    let cancelled = false
-
-    supabase
-      .from('posts')
-      .select('*')
-      .eq('slug', slug ?? '')
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return
-        if (error) console.error(error)
-        if (!data) {
-          setState({ kind: 'notFound' })
-          return
-        }
-        setState({ kind: 'ready', post: data })
-        window.scrollTo({ top: 0, behavior: 'instant' })
-      })
-
-    return () => { cancelled = true }
-  }, [slug])
-
-  // 본문 MDX 브라우저 컴파일
-  const { Component: Content, error: mdxError } = useRuntimeMdx(
-    state.kind === 'ready' ? state.post.body : ''
-  )
-
   // 렌더 후 헤딩 수집 — id가 없어도 직접 생성·부여
   useEffect(() => {
-    if (state.kind !== 'ready' || !Content) return
-
     function collectHeadings() {
       const article = articleRef.current
       if (!article) return false
@@ -220,7 +183,7 @@ export default function PostViewer() {
     }, 200)
 
     return () => clearTimeout(timer)
-  }, [state.kind, Content])
+  }, [code])
 
   // 활성 헤딩 추적 — rAF 스로틀 scroll 기반
   // IntersectionObserver 대비 장점:
@@ -275,28 +238,6 @@ export default function PostViewer() {
     }
   }, [tocItems])
 
-  // ── 로딩 / 404 ───────────────────────────────
-  if (state.kind === 'loading' || (state.kind === 'ready' && !Content && !mdxError)) {
-    return (
-      <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress size={36} />
-      </Box>
-    )
-  }
-
-  if (state.kind === 'notFound') {
-    return (
-      <Box sx={{ py: 10, textAlign: 'center' }}>
-        <Typography variant="h4" fontWeight={700} mb={1}>포스트를 찾을 수 없습니다</Typography>
-        <Typography color="text.secondary" mb={3}>존재하지 않는 포스트이거나 삭제되었습니다.</Typography>
-        <IconButton onClick={() => navigate(-1)}>
-          <ArrowBackIcon /> 돌아가기
-        </IconButton>
-      </Box>
-    )
-  }
-
-  const { post } = state
   const accent = tagColor[post.tag] ?? '#6366f1'
 
   return (
@@ -304,7 +245,7 @@ export default function PostViewer() {
       {/* 뒤로가기 / 편집 */}
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 1 }}>
         <IconButton
-          onClick={() => navigate(-1)}
+          onClick={() => router.back()}
           sx={{ gap: 0.5, borderRadius: '8px', px: 1.5, py: 0.75, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}
         >
           <ArrowBackIcon fontSize="small" />
@@ -314,7 +255,7 @@ export default function PostViewer() {
         {isAdmin && (
           <Tooltip title="MDX 편집">
             <IconButton
-              onClick={() => navigate(`/editor/${slug}`)}
+              onClick={() => router.push(`/editor/${post.slug}`)}
               sx={{ borderRadius: '8px', px: 1.5, py: 0.75, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}
             >
               <EditIcon fontSize="small" />
@@ -322,7 +263,6 @@ export default function PostViewer() {
             </IconButton>
           </Tooltip>
         )}
-        {!post.published && <Chip label="임시저장" size="small" />}
       </Box>
 
       {/* 2열 레이아웃: 본문 + TOC */}
@@ -371,11 +311,7 @@ export default function PostViewer() {
 
           <Divider sx={{ mb: 5 }} />
 
-          <MDXProvider components={mdxComponents}>
-            {Content
-              ? <Content />
-              : <Typography color="error">본문을 렌더링하지 못했습니다: {mdxError}</Typography>}
-          </MDXProvider>
+          <MdxContent code={code} />
         </Box>
 
         {/* TOC 사이드바 */}
