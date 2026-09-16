@@ -1,4 +1,4 @@
-import { Box } from '@mui/material'
+import { cn } from '@/lib/utils'
 
 export interface SliderDotsProps {
   total: number
@@ -8,30 +8,22 @@ export interface SliderDotsProps {
 
 export function SliderDots({ total, current, onDotClick }: SliderDotsProps) {
   return (
-    <Box display="flex" justifyContent="center" gap="6px" mt={2.5}>
+    <div className="mt-5 flex justify-center gap-1.5">
       {Array.from({ length: total }).map((_, i) => (
-        <Box
+        <button
           key={i}
-          component="button"
+          type="button"
           onClick={() => onDotClick(i)}
           aria-label={`슬라이드 ${i + 1}`}
-          sx={{
-            width: i === current ? 36 : 28,
-            height: 6,
-            borderRadius: '3px',
-            bgcolor: i === current ? 'grey.600' : 'grey.300',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-            outline: 'none',
-            transition: 'background 0.2s, width 0.2s',
-            '&:hover': {
-              bgcolor: i === current ? 'grey.700' : 'grey.400',
-            },
-          }}
+          aria-current={i === current}
+          className={cn(
+            'h-1.5 cursor-pointer rounded-[3px] transition-[background-color,width] duration-200 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+            i === current
+              ? 'w-9 bg-neutral-600 hover:bg-neutral-700 dark:bg-neutral-300 dark:hover:bg-neutral-200'
+              : 'w-7 bg-neutral-300 hover:bg-neutral-400 dark:bg-neutral-700 dark:hover:bg-neutral-600',
+          )}
         />
       ))}
-    </Box>
+    </div>
   )
 }
-

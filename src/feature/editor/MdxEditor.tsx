@@ -8,17 +8,11 @@ import { syntaxHighlighting } from '@codemirror/language'
 import { EditorView } from '@codemirror/view'
 import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
 import { MDXProvider } from '@mdx-js/react'
-import { Box, CircularProgress, InputBase, Tooltip } from '@mui/material'
-import { Button } from '@ds/components/Button'
-import { Text }   from '@ds/components/Typography'
-import ArrowBackIcon           from '@mui/icons-material/ArrowBack'
-import FormatBoldIcon          from '@mui/icons-material/FormatBold'
-import FormatItalicIcon        from '@mui/icons-material/FormatItalic'
-import FormatStrikethroughIcon from '@mui/icons-material/FormatStrikethrough'
-import FormatQuoteIcon         from '@mui/icons-material/FormatQuote'
-import InsertLinkIcon          from '@mui/icons-material/InsertLink'
-import InsertPhotoIcon         from '@mui/icons-material/InsertPhoto'
-import CodeIcon                from '@mui/icons-material/Code'
+import {
+  ArrowLeft, Bold, Code as CodeIcon, ImageIcon, Italic, Link as LinkIcon,
+  Loader2, Quote, Strikethrough,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { mdxComponents } from '../post/MdxComponents'
 import { useRuntimeMdx } from './useRuntimeMdx'
 import { useThemeMode } from '@shell/ThemeContext'
@@ -26,6 +20,7 @@ import { Banner } from '@shell/Banner'
 import { supabase } from '@lib/supabase'
 import { useSession } from '@lib/useSession'
 import { formatPostDate } from '@core/domain/post'
+import { Typography } from '@/components/ui/typography'
 
 const TEAL = '#12b886'
 
@@ -212,45 +207,36 @@ function ResizableImg({
   }, [imgId, onResize])
 
   return (
-    <Box
+    <div
       ref={wrapRef}
-      sx={{
-        position: 'relative', display: 'inline-block',
-        width: width ? `${width}px` : '100%',
-        maxWidth: '100%', my: 2, lineHeight: 0,
-        outline: hovered ? '2px solid #6366f1' : '2px solid transparent',
-        borderRadius: '8px', transition: 'outline 0.15s',
-      }}
+      className="relative my-4 inline-block max-w-full rounded-lg leading-none outline-2 outline-transparent transition-[outline-color] duration-150 hover:outline-[#6366f1]"
+      style={{ width: width ? `${width}px` : '100%' }}
       onMouseEnter={() => setIsHoveredTrue(setHovered)}
       onMouseLeave={() => setHovered(false)}
     >
-      <Box component="img" src={src} alt={alt ?? ''} sx={{ width: '100%', display: 'block', borderRadius: '8px' }} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt ?? ''} className="block w-full rounded-lg" />
 
       {/* 크기 라벨 */}
       {hovered && (
-        <Box sx={{ position: 'absolute', top: 6, left: 6, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, px: 0.75, py: 0.25, borderRadius: '4px', fontFamily: 'monospace', pointerEvents: 'none' }}>
+        <span className="pointer-events-none absolute top-1.5 left-1.5 rounded bg-black/55 px-1.5 py-0.5 font-mono text-caption text-white">
           {width ? `${width}px` : '100%'}
-        </Box>
+        </span>
       )}
 
       {/* 리사이즈 핸들 (우측 하단) */}
       {hovered && imgId && (
-        <Box
+        <div
           onMouseDown={onHandleDown}
           title="드래그하여 크기 조절"
-          sx={{
-            position: 'absolute', bottom: 6, right: 6,
-            width: 18, height: 18, bgcolor: '#6366f1', borderRadius: '4px',
-            cursor: 'se-resize', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            '&:hover': { bgcolor: '#4f46e5' },
-          }}
+          className="absolute right-1.5 bottom-1.5 flex size-[18px] cursor-se-resize items-center justify-center rounded bg-[#6366f1] hover:bg-[#4f46e5]"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
             <path d="M2 8L8 2M5 8L8 5M8 8V8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   )
 }
 // setState helper to avoid inline arrow in onMouseEnter
@@ -259,22 +245,20 @@ function setIsHoveredTrue(set: React.Dispatch<React.SetStateAction<boolean>>) { 
 // ── 툴바 버튼 ────────────────────────────────────────────────
 function TbBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
   return (
-    <Tooltip title={title} placement="top">
-      <Box component="button" onClick={onClick} sx={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        minWidth: 32, height: 32, px: 0.5, bgcolor: 'transparent', border: 'none',
-        borderRadius: '4px', cursor: 'pointer', color: 'text.secondary',
-        transition: 'background 0.12s, color 0.12s',
-        '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
-      }}>
-        {children}
-      </Box>
-    </Tooltip>
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded px-1 text-muted-foreground transition-colors hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.08] [&_svg]:size-[18px]"
+    >
+      {children}
+    </button>
   )
 }
 
 function Sep() {
-  return <Box sx={{ width: '1px', height: 20, bgcolor: 'divider', mx: 0.5, flexShrink: 0 }} />
+  return <div aria-hidden className="mx-1 h-5 w-px shrink-0 bg-border" />
 }
 
 // ── 프리뷰 패널 (memo: body 타이핑 중 불필요한 재렌더링 차단) ──────
@@ -291,21 +275,21 @@ const PreviewPanel = memo(function PreviewPanel({
   previewComponents: Record<string, any>
 }) {
   return (
-    <Box sx={{ display: { xs: 'none', md: 'flex' }, flex: 1, flexDirection: 'column', overflowY: 'auto', bgcolor: 'background.paper' }}>
-      <Box sx={{ maxWidth: 680, mx: 'auto', px: 5, pt: 5, pb: 10, width: '100%' }}>
-        <Text variant="h1" sx={{ fontSize: '2rem', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.02em', color: 'text.primary', mb: 4, whiteSpace: 'pre-wrap', display: 'block' }}>
-          {title || <Box component="span" sx={{ color: 'text.disabled' }}>제목 없음</Box>}
-        </Text>
+    <div className="hidden flex-1 flex-col overflow-y-auto bg-card md:flex">
+      <div className="mx-auto w-full max-w-[680px] px-10 pt-10 pb-20">
+        <Typography variant="h1" className="mb-8 block whitespace-pre-wrap">
+          {title || <span className="text-neutral-400">제목 없음</span>}
+        </Typography>
         {error && (
-          <Box sx={{ mb: 3, p: 2, bgcolor: 'error.light', border: '1px solid', borderColor: 'error.light', borderRadius: '8px' }}>
-            <Text variant="code" sx={{ color: 'error.dark', whiteSpace: 'pre-wrap', display: 'block' }}>{error}</Text>
-          </Box>
+          <div role="alert" className="mb-6 rounded-lg border border-destructive/20 bg-destructive/10 p-4">
+            <Typography variant="code" color="destructive" className="block whitespace-pre-wrap">{error}</Typography>
+          </div>
         )}
         <MDXProvider components={previewComponents}>
           {Component && <Component />}
         </MDXProvider>
-      </Box>
-    </Box>
+      </div>
+    </div>
   )
 })
 
@@ -514,64 +498,62 @@ export default function MdxEditor() {
   }, [])
 
   if (loading) return (
-    <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.paper' }}>
-      <CircularProgress size={32} sx={{ color: TEAL }} />
-    </Box>
+    <div className="flex h-screen items-center justify-center bg-card">
+      <Loader2 className="size-8 animate-spin" style={{ color: TEAL }} aria-label="불러오는 중" />
+    </div>
   )
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper', overflow: 'hidden' }}>
+    <div className="flex h-screen flex-col overflow-hidden bg-card">
 
       {/* ── 에디터 Banner ── */}
       <Banner />
 
-      <Box ref={containerRef} sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div ref={containerRef} className="flex flex-1 overflow-hidden">
 
         {/* ── 에디터 패널 ── */}
-        <Box sx={{
-          width: { xs: '100%', md: `${pct}%` }, flexShrink: 0,
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          borderRight: { md: '1px solid' },
-          borderRightColor: { md: 'divider' },
-          position: 'relative',
-        }}>
-          <Box sx={{ px: 5, pt: 5, flexShrink: 0 }}>
-            <InputBase
+        <div
+          className="relative flex w-full shrink-0 flex-col overflow-hidden md:w-[var(--editor-pct)] md:border-r"
+          style={{ '--editor-pct': `${pct}%` } as React.CSSProperties}
+        >
+          <div className="shrink-0 px-10 pt-10">
+            <textarea
               value={parts.title}
               onChange={e => set('title', e.target.value)}
               placeholder="제목을 입력하세요"
-              fullWidth multiline
-              sx={{ fontSize: '2rem', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.02em', color: 'text.primary', '& textarea': { p: 0 } }}
+              aria-label="제목"
+              rows={1}
+              className="w-full resize-none bg-transparent p-0 text-h1 outline-none [field-sizing:content] placeholder:text-neutral-400"
             />
-            <Box sx={{ mt: 2, mb: 2.5, height: 5, width: 56, bgcolor: TEAL, borderRadius: '3px' }} />
-            <InputBase
+            <div aria-hidden className="mt-4 mb-5 h-[5px] w-14 rounded-[3px]" style={{ backgroundColor: TEAL }} />
+            <input
               value={parts.tag}
               onChange={e => set('tag', e.target.value)}
               placeholder="태그를 입력하세요"
-              fullWidth
-              sx={{ fontSize: '0.9375rem', color: 'text.secondary', mb: 1.5, '& input': { p: 0 } }}
+              aria-label="태그"
+              className="mb-3 w-full bg-transparent p-0 text-body1 text-muted-foreground outline-none placeholder:text-neutral-400"
             />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, py: 0.75, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap' }}>
+            <div role="toolbar" aria-label="서식" className="flex flex-wrap items-center gap-0.5 border-y py-1.5">
               {(['h1','h2','h3','h4'] as const).map(h => (
                 <TbBtn key={h} onClick={() => fmt(h)} title={`제목 ${h[1]}`}>
-                  <span style={{ fontFamily: 'serif', fontWeight: 700, fontSize: 13 }}>H<sub style={{ fontSize: 9 }}>{h[1]}</sub></span>
+                  <span className="font-serif text-subtitle2 font-bold">H<sub className="text-[0.7em]">{h[1]}</sub></span>
                 </TbBtn>
               ))}
               <Sep />
-              <TbBtn onClick={() => fmt('bold')}   title="굵게"><FormatBoldIcon sx={{ fontSize: 18 }} /></TbBtn>
-              <TbBtn onClick={() => fmt('italic')} title="기울임"><FormatItalicIcon sx={{ fontSize: 18 }} /></TbBtn>
-              <TbBtn onClick={() => fmt('strike')} title="취소선"><FormatStrikethroughIcon sx={{ fontSize: 18 }} /></TbBtn>
+              <TbBtn onClick={() => fmt('bold')}   title="굵게"><Bold /></TbBtn>
+              <TbBtn onClick={() => fmt('italic')} title="기울임"><Italic /></TbBtn>
+              <TbBtn onClick={() => fmt('strike')} title="취소선"><Strikethrough /></TbBtn>
               <Sep />
-              <TbBtn onClick={() => fmt('quote')}  title="인용구"><FormatQuoteIcon sx={{ fontSize: 18 }} /></TbBtn>
-              <TbBtn onClick={() => fmt('link')}   title="링크 삽입"><InsertLinkIcon sx={{ fontSize: 18 }} /></TbBtn>
-              <TbBtn onClick={() => fmt('image')}  title="이미지 삽입"><InsertPhotoIcon sx={{ fontSize: 18 }} /></TbBtn>
-              <TbBtn onClick={() => fmt('code')}   title="코드 블록"><CodeIcon sx={{ fontSize: 18 }} /></TbBtn>
-            </Box>
-          </Box>
+              <TbBtn onClick={() => fmt('quote')}  title="인용구"><Quote /></TbBtn>
+              <TbBtn onClick={() => fmt('link')}   title="링크 삽입"><LinkIcon /></TbBtn>
+              <TbBtn onClick={() => fmt('image')}  title="이미지 삽입"><ImageIcon /></TbBtn>
+              <TbBtn onClick={() => fmt('code')}   title="코드 블록"><CodeIcon /></TbBtn>
+            </div>
+          </div>
 
           {/* 본문 에디터 + 드래그드롭 */}
-          <Box
-            sx={{ flex: 1, overflow: 'hidden', position: 'relative' }}
+          <div
+            className="relative flex-1 overflow-hidden"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -589,75 +571,51 @@ export default function MdxEditor() {
 
             {/* 드래그오버 오버레이 */}
             {isDragOver && (
-              <Box sx={{
-                position: 'absolute', inset: 0, zIndex: 10,
-                bgcolor: 'rgba(99,102,241,0.08)',
-                border: `2px dashed #6366f1`,
-                borderRadius: '4px',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                gap: 1, pointerEvents: 'none',
-              }}>
-                <InsertPhotoIcon sx={{ fontSize: 36, color: '#6366f1' }} />
-                <Text variant="body1" sx={{ color: '#6366f1', fontWeight: 600 }}>
-                  이미지를 놓으세요
-                </Text>
-              </Box>
+              <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-[#6366f1] bg-[#6366f1]/[0.08]">
+                <ImageIcon className="size-9 text-[#6366f1]" />
+                <Typography variant="subtitle1" className="font-semibold text-[#6366f1]">이미지를 놓으세요</Typography>
+              </div>
             )}
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {/* ── 글자 색상 피커 팝업 (position: fixed) ── */}
         {selPicker && (
-          <Box
+          <div
             onMouseDown={e => e.preventDefault()} // 에디터 selection 유지
-            sx={{
-              position: 'fixed',
-              left: selPicker.x,
-              top: selPicker.y - 52,
-              zIndex: 3000,
-              bgcolor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: '10px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-              px: '10px',
-              py: '7px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
+            className="fixed z-[3000] flex items-center gap-[5px] rounded-[10px] border bg-card px-2.5 py-[7px] shadow-[0_4px_20px_rgba(0,0,0,0.18)]"
+            style={{ left: selPicker.x, top: selPicker.y - 52 }}
           >
             {PALETTE.map(({ label, value }) => (
-              <Tooltip key={value || 'remove'} title={label} placement="top">
-                <Box
-                  onClick={() => applyColor(value)}
-                  sx={{
-                    width: 20, height: 20,
-                    borderRadius: '50%',
-                    bgcolor: value || 'transparent',
-                    border: `2px solid ${value ? `${value}55` : '#ced4da'}`,
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    position: 'relative',
-                    transition: 'transform 0.1s, box-shadow 0.1s',
-                    '&:hover': {
-                      transform: 'scale(1.3)',
-                      boxShadow: `0 0 0 2px ${value || '#ced4da'}`,
-                    },
-                  }}
-                >
-                  {!value && (
-                    <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#adb5bd', lineHeight: 1 }}>✕</Box>
-                  )}
-                </Box>
-              </Tooltip>
+              <button
+                key={value || 'remove'}
+                type="button"
+                onClick={() => applyColor(value)}
+                title={label}
+                aria-label={label}
+                className="relative size-5 shrink-0 cursor-pointer rounded-full border-2 transition-[transform,box-shadow] duration-100 hover:scale-[1.3]"
+                style={{
+                  backgroundColor: value || 'transparent',
+                  borderColor: value ? `${value}55` : '#ced4da',
+                } as React.CSSProperties}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 0 2px ${value || '#ced4da'}` }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = '' }}
+              >
+                {!value && (
+                  <span aria-hidden className="absolute inset-0 flex items-center justify-center text-caption leading-none text-[#adb5bd]">✕</span>
+                )}
+              </button>
             ))}
-          </Box>
+          </div>
         )}
 
         {/* 드래그 핸들 */}
-        <Box onMouseDown={onDown} sx={{ display: { xs: 'none', md: 'block' }, width: 4, flexShrink: 0, cursor: 'col-resize', bgcolor: 'transparent', transition: 'background 0.15s', '&:hover': { bgcolor: 'divider' }, '&:active': { bgcolor: TEAL } }} />
+        <div
+          onMouseDown={onDown}
+          role="separator"
+          aria-orientation="vertical"
+          className="hidden w-1 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-border active:bg-[#12b886] md:block"
+        />
 
         {/* ── 프리뷰 패널 ── */}
         <PreviewPanel
@@ -666,20 +624,40 @@ export default function MdxEditor() {
           error={error}
           previewComponents={previewComponents}
         />
-      </Box>
+      </div>
 
       {/* ── 하단 바 ── */}
-      <Box sx={{ flexShrink: 0, height: 56, display: 'flex', alignItems: 'center', px: 3, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
-        <Button variant="ghost" startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />} onClick={() => router.back()} sx={{ fontSize: 14 }}>나가기</Button>
-        <Box sx={{ flex: 1 }} />
+      <div className="flex h-14 shrink-0 items-center border-t bg-card px-6">
+        <Button variant="ghost" size="lg" onClick={() => router.back()}>
+          <ArrowLeft />
+          나가기
+        </Button>
+        <div className="flex-1" />
         {saveMsg && (
-          <Text variant="body2" role="status" sx={{ mr: 2, color: saveMsg.ok ? 'text.secondary' : 'error.main' }}>{saveMsg.text}</Text>
+          <Typography variant="body2" role="status" color={saveMsg.ok ? 'muted' : 'destructive'} className="mr-4">{saveMsg.text}</Typography>
         )}
         {!published && (
-          <Button variant="text" onClick={() => save(false)} loading={saving === 'draft'} disabled={!!saving} sx={{ color: TEAL, fontWeight: 600, fontSize: 14, mr: 1, '&:hover': { bgcolor: `${TEAL}14` } }}>임시저장</Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            onClick={() => save(false)}
+            disabled={!!saving}
+            className="mr-2 font-semibold text-[#12b886] hover:bg-[#12b886]/[0.08] hover:text-[#12b886]"
+          >
+            {saving === 'draft' && <Loader2 className="animate-spin" />}
+            임시저장
+          </Button>
         )}
-        <Button variant="contained" onClick={() => save(true)} loading={saving === 'publish'} disabled={!!saving} sx={{ bgcolor: TEAL, color: '#fff', fontWeight: 600, fontSize: 14, borderRadius: '20px', px: 3, boxShadow: 'none', '&:hover': { bgcolor: '#0ca678', boxShadow: 'none' } }}>{published ? '수정하기' : '출간하기'}</Button>
-      </Box>
-    </Box>
+        <Button
+          size="lg"
+          onClick={() => save(true)}
+          disabled={!!saving}
+          className="rounded-full bg-[#12b886] px-6 font-semibold text-white hover:bg-[#0ca678]"
+        >
+          {saving === 'publish' && <Loader2 className="animate-spin" />}
+          {published ? '수정하기' : '출간하기'}
+        </Button>
+      </div>
+    </div>
   )
 }

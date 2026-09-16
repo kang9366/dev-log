@@ -1,17 +1,15 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  Box, Chip, Divider,
-  IconButton, Stack, Typography, Tooltip,
-} from '@mui/material'
-import ArrowBackIcon     from '@mui/icons-material/ArrowBack'
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
-import EditIcon          from '@mui/icons-material/Edit'
+import { ArrowLeft, CalendarDays, Pencil } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { MdxContent } from './MdxContent'
 import { useSession } from '@lib/useSession'
 import { formatPostDate } from '@core/domain/post'
 import type { PostSummary } from '@lib/posts'
+import { Typography } from '@/components/ui/typography'
 
 // ── 타입 ─────────────────────────────────────
 interface TocItem {
@@ -30,91 +28,42 @@ const tagColor: Record<string, string> = {
 }
 
 // ── TOC 컴포넌트 ──────────────────────────────
-function TableOfContents({
-  items,
-  activeId,
-}: {
-  items: TocItem[]
-  activeId: string
-}) {
+function TableOfContents({ items, activeId }: { items: TocItem[]; activeId: string }) {
   if (items.length === 0) return null
 
   return (
-    <Box
-      component="nav"
+    <nav
       aria-label="목차"
-      sx={{
-        display: { xs: 'none', lg: 'block' },
-        width: 220,
-        flexShrink: 0,
-        alignSelf: 'flex-start',        // 부모 flex 높이에 늘어나지 않도록
-        position: 'sticky',
-        top: 58,                        // banner(50px) + gap(8px)
-        maxHeight: 'calc(100vh - 66px)',
-        overflowY: 'auto',
-        scrollbarWidth: 'none',
-        '&::-webkit-scrollbar': { display: 'none' },
-      }}
+      className="sticky top-[58px] hidden max-h-[calc(100vh-66px)] w-[220px] shrink-0 self-start overflow-y-auto [scrollbar-width:none] lg:block [&::-webkit-scrollbar]:hidden"
     >
-      {/* 라벨 */}
-      <Typography
-        sx={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: 'text.disabled',
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          mb: 1.5,
-          pl: '10px',
-        }}
-      >
-        On this page
-      </Typography>
-
-      {/* 목록 */}
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+      <Typography variant="overline" as="p" color="subtle" className="mb-3 pl-2.5 font-bold">On this page</Typography>
+      <ul>
         {items.map((item) => {
           const isActive = activeId === item.id
           return (
-            <Box component="li" key={item.id}>
-              <Box
-                component="a"
+            <li key={item.id}>
+              <a
                 href={`#${item.id}`}
-                onClick={(e: React.MouseEvent) => {
+                aria-current={isActive ? 'location' : undefined}
+                onClick={(e) => {
                   e.preventDefault()
-                  document.getElementById(item.id)?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                  })
+                  document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }}
-                sx={{
-                  display: 'block',
-                  py: '5px',
-                  pl: item.level === 3 ? '22px' : '10px',
-                  pr: 1,
-                  fontSize: item.level === 2 ? '0.8125rem' : '0.75rem',
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? 'primary.main' : 'text.secondary',
-                  textDecoration: 'none',
-                  lineHeight: 1.5,
-                  borderLeft: '2px solid',
-                  borderColor: isActive ? 'primary.main' : 'transparent',
-                  borderRadius: '0 4px 4px 0',
-                  transition: 'color 0.15s, border-color 0.15s, background 0.15s',
-                  '&:hover': {
-                    color: 'text.primary',
-                    bgcolor: 'action.hover',
-                    borderColor: isActive ? 'primary.main' : 'divider',
-                  },
-                }}
+                className={cn(
+                  'block rounded-r border-l-2 py-[5px] pr-2 transition-colors hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.08]',
+                  item.level === 3 ? 'pl-[22px] text-caption' : 'pl-2.5 text-body2',
+                  isActive
+                    ? 'border-primary font-semibold text-primary'
+                    : 'border-transparent text-muted-foreground hover:border-border',
+                )}
               >
                 {item.text}
-              </Box>
-            </Box>
+              </a>
+            </li>
           )
         })}
-      </Box>
-    </Box>
+      </ul>
+    </nav>
   )
 }
 
@@ -241,82 +190,61 @@ export default function PostViewer({ post, code }: { post: PostSummary; code: st
   const accent = tagColor[post.tag] ?? '#6366f1'
 
   return (
-    <Box sx={{ pb: 10 }}>
+    <div className="pb-20">
       {/* 뒤로가기 / 편집 */}
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <IconButton
-          onClick={() => router.back()}
-          sx={{ gap: 0.5, borderRadius: '8px', px: 1.5, py: 0.75, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}
-        >
-          <ArrowBackIcon fontSize="small" />
-          <Typography variant="body2" component="span">목록으로</Typography>
-        </IconButton>
-
+      <div className="mb-8 flex items-center gap-2">
+        <Button variant="ghost" size="lg" onClick={() => router.back()} className="text-muted-foreground">
+          <ArrowLeft />
+          목록으로
+        </Button>
         {isAdmin && (
-          <Tooltip title="MDX 편집">
-            <IconButton
-              onClick={() => router.push(`/editor/${post.slug}`)}
-              sx={{ borderRadius: '8px', px: 1.5, py: 0.75, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}
-            >
-              <EditIcon fontSize="small" />
-              <Typography variant="body2" component="span" sx={{ ml: 0.5 }}>편집</Typography>
-            </IconButton>
-          </Tooltip>
+          <Button variant="ghost" size="lg" onClick={() => router.push(`/editor/${post.slug}`)} className="text-muted-foreground" title="MDX 편집">
+            <Pencil />
+            편집
+          </Button>
         )}
-      </Box>
+      </div>
 
       {/* 2열 레이아웃: 본문 + TOC */}
-      <Box sx={{ display: 'flex', gap: { lg: 6 }, alignItems: 'flex-start' }}>
-
-        {/* 본문 */}
-        <Box component="article" ref={articleRef} sx={{ flex: 1, minWidth: 0, maxWidth: 740 }}>
-          <Stack spacing={2} mb={4}>
-            <Box>
-              <Chip
-                label={post.tag}
-                size="small"
-                sx={{
-                  bgcolor: `${accent}18`,
-                  color: accent === '#000000' ? '#333' : accent,
-                  fontWeight: 600,
-                  fontSize: '0.75rem',
-                  border: `1px solid ${accent}33`,
-                  borderRadius: '6px',
-                  height: 26,
+      <div className="flex items-start lg:gap-12">
+        <article ref={articleRef} className="max-w-[740px] min-w-0 flex-1">
+          <header className="mb-8 flex flex-col gap-4">
+            <div>
+              <Badge
+                variant="outline"
+                className="h-[26px] rounded-md px-2 text-caption font-semibold"
+                style={{
+                  backgroundColor: `${accent}18`,
+                  color: accent === '#000000' ? undefined : accent,
+                  borderColor: `${accent}33`,
                 }}
-              />
-            </Box>
-            <Typography
-              variant="h1"
-              component="h1"
-              sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.03em', color: 'text.primary' }}
-            >
-              {post.title}
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.75, fontSize: '1.0625rem' }}>
-              {post.excerpt}
-            </Typography>
-            <Stack direction="row" alignItems="center" spacing={0.75}>
-              <CalendarTodayIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
-              <Typography variant="caption" color="text.disabled">{formatPostDate(post.published_at)}</Typography>
-            </Stack>
-          </Stack>
+              >
+                {post.tag}
+              </Badge>
+            </div>
+            <Typography variant="h2" as="h1" className="md:text-h1">{post.title}</Typography>
+            <Typography variant="prose" color="muted">{post.excerpt}</Typography>
+            <p className="flex items-center gap-1.5 text-caption text-neutral-400">
+              <CalendarDays className="size-3.5" aria-hidden />
+              <time dateTime={post.published_at}>{formatPostDate(post.published_at)}</time>
+            </p>
+          </header>
 
-          <Box
-            component="img"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={post.image_url}
             alt={post.title}
-            sx={{ width: '100%', height: { xs: 200, sm: 280, md: 360 }, objectFit: 'cover', borderRadius: '12px', display: 'block', mb: 5 }}
+            className="mb-10 block h-[200px] w-full rounded-xl object-cover sm:h-[280px] md:h-[360px]"
           />
 
-          <Divider sx={{ mb: 5 }} />
+          <hr className="mb-10 border-border" />
 
           <MdxContent code={code} />
-        </Box>
+        </article>
 
         {/* TOC 사이드바 */}
         <TableOfContents items={tocItems} activeId={activeId} />
-      </Box>
-    </Box>
+      </div>
+    </div>
   )
 }

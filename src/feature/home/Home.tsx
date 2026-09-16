@@ -1,18 +1,15 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Box, Stack, Typography } from '@mui/material'
 import { PinnedPosts } from './PinnedPosts'
 import { BlogPostCard } from '@ds/cards/BlogPostCard'
 import { pinnedPosts } from './mocks/pinnedPosts'
 import type { PostSummary } from '@lib/posts'
 import { formatPostDate } from '@core/domain/post'
 import { toggleLike, type LikeCounts, type LikeState } from '@core/use-cases/toggleLike'
+import { Typography } from '@/components/ui/typography'
 
 /** 홈. 글 목록은 서버 페이지가 조회해서 넘겨줌 */
 export default function Home({ posts }: { posts: PostSummary[] }) {
-  const router = useRouter()
-
   const [likedPosts, setLikedPosts] = useState<LikeState>({})
   const [likeCounts, setLikeCounts] = useState<LikeCounts>({})
 
@@ -23,21 +20,15 @@ export default function Home({ posts }: { posts: PostSummary[] }) {
   }
 
   return (
-    <Stack sx={{ width: '100%', minHeight: '100vh', gap: { xs: 3, md: 4 } }}>
+    <div className="flex min-h-screen w-full flex-col gap-6 md:gap-8">
       <PinnedPosts posts={pinnedPosts} />
-      <Box sx={{ width: '100%' }}>
-        <Typography mt={1} variant="body1" color="textSecondary">
-          모든 포스트
-        </Typography>
-        <Box
-          display="grid"
-          gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }}
-          gap={{ xs: 2, md: 3 }}
-          mt={2}
-        >
+      <section className="w-full">
+        <Typography variant="subtitle1" as="h2" color="muted" className="mt-2">모든 포스트</Typography>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
           {posts.map((post) => (
             <BlogPostCard
               key={post.id}
+              href={`/posts/${post.slug}`}
               tag={post.tag}
               title={post.title}
               excerpt={post.excerpt}
@@ -46,12 +37,10 @@ export default function Home({ posts }: { posts: PostSummary[] }) {
               liked={likedPosts[post.id]}
               date={formatPostDate(post.published_at)}
               onLike={() => handleLike(post.id)}
-              onClick={() => router.push(`/posts/${post.slug}`)}
-              sx={{ maxWidth: '100%' }}
             />
           ))}
-        </Box>
-      </Box>
-    </Stack>
+        </div>
+      </section>
+    </div>
   )
 }

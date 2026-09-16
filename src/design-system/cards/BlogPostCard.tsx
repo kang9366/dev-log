@@ -1,21 +1,12 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  CardMedia,
-  Chip,
-  IconButton,
-  Stack,
-  type SxProps,
-  type Theme,
-  Typography,
-} from '@mui/material'
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
-import FavoriteIcon from '@mui/icons-material/Favorite'
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
+import Link from 'next/link'
+import { Heart, MessageCircle } from 'lucide-react'
 import type { MouseEventHandler } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+import { Typography } from '@/components/ui/typography'
 
 export interface BlogPostCardProps {
+  href: string
   tag?: string
   title: string
   excerpt: string
@@ -26,11 +17,11 @@ export interface BlogPostCardProps {
   date: string
   liked?: boolean
   onLike?: MouseEventHandler<HTMLButtonElement>
-  onClick?: () => void
-  sx?: SxProps<Theme>
+  className?: string
 }
 
 export function BlogPostCard({
+  href,
   tag,
   title,
   excerpt,
@@ -41,139 +32,65 @@ export function BlogPostCard({
   date,
   liked = false,
   onLike,
-  onClick,
-  sx,
+  className,
 }: BlogPostCardProps) {
   return (
-    <Card
-      onClick={onClick}
-      sx={{
-        width: '100%',
-        borderRadius: 3,
-        boxShadow: 'none',
-        border: '1px solid',
-        borderColor: 'divider',
-        cursor: onClick ? 'pointer' : 'default',
-        overflow: 'hidden', // Card가 모든 자식 클리핑 담당
-        transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-        '&:hover':
-          onClick
-            ? {
-                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                transform: 'translateY(-2px)',
-                '& .card-image': { transform: 'scale(1.05)' },
-                '& .card-title': { textDecoration: 'underline' },
-              }
-            : {},
-        bgcolor: 'background.paper',
-        ...sx,
-      }}
+    <article
+      className={cn(
+        'group relative w-full overflow-hidden rounded-xl border bg-card text-card-foreground',
+        'transition-[box-shadow,translate] duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]',
+        className,
+      )}
     >
-      {/* borderRadius 제거 - 상위 Card의 overflow:hidden 이 클리핑 처리 */}
-      <Box sx={{ position: 'relative', overflow: 'hidden' }}>
-        <CardMedia
-          component="img"
-          height="220"
-          image={imageUrl}
+      <div className="relative overflow-hidden">
+        {/* 외부 이미지 URL 이 글마다 달라 next/image 대신 img */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
           alt={imageAlt}
-          className="card-image"
-          sx={{
-            objectFit: 'cover',
-            display: 'block', // inline gap(하단 여백) 제거
-            transition: 'transform 0.4s ease',
-          }}
+          className="block h-[220px] w-full object-cover transition-transform duration-400 group-hover:scale-105"
         />
         {tag && (
-          <Chip
-            label={tag}
-            size="small"
-            sx={{
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              bgcolor: 'background.paper',
-              color: 'text.primary',
-              fontWeight: 500,
-              fontSize: '0.75rem',
-              height: 26,
-              borderRadius: 1.5,
-              boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-            }}
-          />
+          <Badge className="absolute top-3 left-3 h-[26px] rounded-md bg-card px-2 text-caption font-medium text-foreground shadow-[0_1px_4px_rgba(0,0,0,0.12)]">
+            {tag}
+          </Badge>
         )}
-      </Box>
+      </div>
 
-      <CardContent sx={{ pt: 2.5, pb: '12px !important', px: 2.5 }}>
-        <Typography
-          variant="subtitle1"
-          fontWeight={700}
-          lineHeight={1.45}
-          className="card-title"
-          sx={{
-            mb: 1,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            fontSize: '1rem',
-            color: 'text.primary',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {title}
+      <div className="px-5 pt-5 pb-3">
+        <Typography variant="h6" as="h3" clamp={2} className="mb-2 group-hover:underline">
+          {/* 카드 전체를 덮는 링크 (크롤러가 따라갈 수 있는 실제 <a>) */}
+          <Link href={href} className="after:absolute after:inset-0">
+            {title}
+          </Link>
         </Typography>
 
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            lineHeight: 1.6,
-            mb: 2,
-            fontSize: '0.875rem',
-          }}
-        >
-          {excerpt}
-        </Typography>
+        <Typography variant="body2" color="muted" clamp={2} className="mb-4">{excerpt}</Typography>
 
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Stack direction="row" spacing={0.5} alignItems="center">
-            <Box display="flex" alignItems="center" gap={0.5}>
-              <ChatBubbleOutlineIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
-              <Typography variant="caption" color="text.disabled">
-                {commentCount}
-              </Typography>
-            </Box>
-
-            <Box display="flex" alignItems="center" gap={0.5} ml={0.5}>
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onLike?.(e)
-                }}
-                disableRipple
-                sx={{ p: 0, color: liked ? 'error.main' : 'text.disabled' }}
-              >
-                {liked ? <FavoriteIcon sx={{ fontSize: 16 }} /> : <FavoriteBorderIcon sx={{ fontSize: 16 }} />}
-              </IconButton>
-              <Typography variant="caption" color={liked ? 'error.main' : 'text.disabled'}>
-                {likeCount}
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Typography variant="caption" color="text.disabled">
-            {date}
-          </Typography>
-        </Stack>
-      </CardContent>
-    </Card>
+        <div className="flex items-center justify-between text-caption text-neutral-400">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1">
+              <MessageCircle className="size-4" aria-hidden />
+              <span className="sr-only">댓글</span>
+              {commentCount}
+            </span>
+            {/* 링크 위로 올려서 클릭이 글 이동으로 새지 않게 */}
+            <button
+              type="button"
+              onClick={onLike}
+              aria-pressed={liked}
+              aria-label="좋아요"
+              className={cn('relative z-10 flex items-center gap-1 transition-colors hover:text-destructive', liked && 'text-destructive')}
+            >
+              <Heart className={cn('size-4', liked && 'fill-current')} aria-hidden />
+              {likeCount}
+            </button>
+          </div>
+          <time>{date}</time>
+        </div>
+      </div>
+    </article>
   )
 }
 
 export default BlogPostCard
-

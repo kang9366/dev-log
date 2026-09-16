@@ -1,10 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import InitColorSchemeScript from '@mui/material/InitColorSchemeScript'
-import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter'
 import { AppThemeProvider } from '@shell/ThemeContext'
-import { THEME_STORAGE_KEY } from '@ds/theme'
-import 'highlight.js/styles/github-dark.css' // 코드 블록 구문 강조
+import { cn } from '@/lib/utils'
+import './globals.css'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -21,13 +19,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" className={inter.variable} suppressHydrationWarning>
+    // next-themes 가 html class 를 바꾸므로 suppressHydrationWarning 필요
+    <html lang="ko" className={cn('font-sans', inter.variable)} suppressHydrationWarning>
       <body>
-        {/* 저장된 라이트/다크 모드를 첫 페인트 전에 적용 (깜빡임 방지) */}
-        <InitColorSchemeScript attribute="class" modeStorageKey={THEME_STORAGE_KEY} defaultMode="system" />
-        <AppRouterCacheProvider>
-          <AppThemeProvider>{children}</AppThemeProvider>
-        </AppRouterCacheProvider>
+        <AppThemeProvider>{children}</AppThemeProvider>
       </body>
     </html>
   )

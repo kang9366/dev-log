@@ -1,11 +1,14 @@
 'use client'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Stack, TextField, Typography } from '@mui/material'
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import { Button } from '@ds/components/Button'
+import { Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { supabase } from '@lib/supabase'
 import { useSession } from '@lib/useSession'
+import { Typography } from '@/components/ui/typography'
 
 /** 로컬 개발(next dev): 메일 없이 아무 번호나 입력하면 관리자 로그인 (/api/dev-login) */
 const DEV_LOGIN = process.env.NODE_ENV === 'development'
@@ -74,36 +77,47 @@ export function LoginForm() {
 
   if (!sent) {
     return (
-      <Stack spacing={2}>
-        <Typography variant="body2" color="text.secondary">
-          등록된 관리자 이메일로 인증번호를 보냅니다.
-        </Typography>
-        {error && <Typography color="error" variant="body2" role="alert">{error}</Typography>}
-        <Button onClick={sendCode} loading={loading} fullWidth>인증번호 받기</Button>
-      </Stack>
+      <div className="flex flex-col gap-4">
+        <Typography variant="body2" color="muted">등록된 관리자 이메일로 인증번호를 보냅니다.</Typography>
+        {error && <Typography variant="body2" color="destructive" role="alert">{error}</Typography>}
+        <Button size="lg" onClick={sendCode} disabled={loading} className="w-full">
+          {loading && <Loader2 className="animate-spin" />}
+          인증번호 받기
+        </Button>
+      </div>
     )
   }
 
   return (
-    <Stack component="form" onSubmit={verifyCode} spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+    <form onSubmit={verifyCode} className="flex flex-col gap-4">
+      <Typography variant="body2" color="muted">
         {DEV_LOGIN
           ? '개발 모드: 메일을 보내지 않았습니다. 아무 번호나 입력하세요.'
           : '관리자 이메일로 보낸 인증번호를 입력하세요.'}
       </Typography>
-      <TextField
-        label="인증번호"
-        required
-        autoFocus
-        autoComplete="one-time-code"
-        value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-        slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
-      />
-      {error && <Typography color="error" variant="body2" role="alert">{error}</Typography>}
-      <Button type="submit" loading={loading} fullWidth>확인</Button>
-      <Button variant="ghost" onClick={sendCode} disabled={loading} fullWidth>인증번호 다시 받기</Button>
-    </Stack>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="admin-otp-code">인증번호</Label>
+        <Input
+          id="admin-otp-code"
+          required
+          autoFocus
+          autoComplete="one-time-code"
+          inputMode="numeric"
+          maxLength={10}
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          aria-invalid={!!error}
+        />
+      </div>
+      {error && <Typography variant="body2" color="destructive" role="alert">{error}</Typography>}
+      <Button type="submit" size="lg" disabled={loading} className="w-full">
+        {loading && <Loader2 className="animate-spin" />}
+        확인
+      </Button>
+      <Button type="button" variant="ghost" size="lg" onClick={sendCode} disabled={loading} className="w-full">
+        인증번호 다시 받기
+      </Button>
+    </form>
   )
 }
 
@@ -122,9 +136,9 @@ export default function Login() {
   }, [isAdmin, router, target])
 
   return (
-    <Stack spacing={2} sx={{ maxWidth: 360, mx: 'auto', py: 10 }}>
-      <Typography variant="h5" fontWeight={700}>관리자 로그인</Typography>
+    <div className="mx-auto flex max-w-[360px] flex-col gap-4 py-20">
+      <Typography variant="h3" as="h1">관리자 로그인</Typography>
       <LoginForm />
-    </Stack>
+    </div>
   )
 }

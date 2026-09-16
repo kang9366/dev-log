@@ -25,6 +25,9 @@
       }
     ],
     "paths": {
+      "@/*": [
+        "./src/*"
+      ],
       "@shell/*": [
         "./src/shell/*"
       ],
@@ -36,9 +39,6 @@
       ],
       "@feature/*": [
         "./src/feature/*"
-      ],
-      "@ds": [
-        "./src/design-system/index"
       ],
       "@ds/*": [
         "./src/design-system/*"

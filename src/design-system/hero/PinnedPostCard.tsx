@@ -1,5 +1,8 @@
-import { Box, Button, Chip, Typography } from '@mui/material'
+import Link from 'next/link'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import type { Post } from '@core/domain/post'
+import { Typography } from '@/components/ui/typography'
 
 export interface PinnedPostCardProps {
   post: Post
@@ -8,158 +11,62 @@ export interface PinnedPostCardProps {
   direction: 'left' | 'right'
 }
 
+const EASE = 'cubic-bezier(0.25,0.46,0.45,0.94)'
+
 export function PinnedPostCard({ post, index, animating, direction }: PinnedPostCardProps) {
   const slideOutX = direction === 'right' ? '-40px' : '40px'
   const contentSlideOutX = direction === 'right' ? '-28px' : '28px'
 
-  const imgStyle = animating
-    ? { opacity: 0, transform: `translateX(${slideOutX}) scale(0.97)` }
-    : { opacity: 1, transform: 'translateX(0) scale(1)' }
-
-  const contentStyle = animating
-    ? { opacity: 0, transform: `translateX(${contentSlideOutX})` }
-    : { opacity: 1, transform: 'translateX(0)' }
-
   return (
     <>
-      {/* 이미지 박스 */}
-      <Box
-        sx={{
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: { xs: '16px 16px 0 0', md: '16px 0 0 16px' },
-          minHeight: { xs: 220, sm: 280, md: 380 },
-        }}
-      >
-        <Box
-          component="img"
+      {/* 이미지 */}
+      <div className="relative min-h-[220px] overflow-hidden rounded-t-2xl sm:min-h-[280px] md:min-h-[380px] md:rounded-l-2xl md:rounded-tr-none">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           key={post.id}
           src={post.image}
           alt={post.title}
-          sx={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-            transition: 'opacity 0.35s ease, transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94)',
-            ...imgStyle,
+          className="absolute inset-0 block size-full object-cover"
+          style={{
+            transition: `opacity 0.35s ease, transform 0.6s ${EASE}`,
+            opacity: animating ? 0 : 1,
+            transform: animating ? `translateX(${slideOutX}) scale(0.97)` : 'translateX(0) scale(1)',
           }}
         />
-
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 16,
-            left: 16,
-            bgcolor: 'rgba(0,0,0,0.6)',
-            color: '#fff',
-            px: 1.5,
-            py: 0.75,
-            borderRadius: '8px',
-            backdropFilter: 'blur(6px)',
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-          }}
-        >
+        <span className="absolute bottom-4 left-4 rounded-lg bg-black/60 px-3 py-1.5 text-subtitle2 font-bold text-white backdrop-blur-sm">
           {String(index + 1).padStart(2, '0')}
-        </Box>
-      </Box>
+        </span>
+      </div>
 
-      {/* 콘텐츠 박스 */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          px: { xs: 3, sm: 4, md: 6 },
-          py: { xs: 3, sm: 4, md: 5 },
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: { xs: '0 0 16px 16px', md: '0 16px 16px 0' },
-          bgcolor: 'background.paper',
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            transition: 'opacity 0.3s ease, transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94)',
-            ...contentStyle,
+      {/* 내용 */}
+      <div className="flex flex-col justify-center overflow-hidden rounded-b-2xl border bg-card px-6 py-6 sm:px-8 sm:py-8 md:rounded-r-2xl md:rounded-bl-none md:px-12 md:py-10">
+        <div
+          style={{
+            transition: `opacity 0.3s ease, transform 0.35s ${EASE}`,
+            opacity: animating ? 0 : 1,
+            transform: animating ? `translateX(${contentSlideOutX})` : 'translateX(0)',
           }}
         >
-          <Chip
-            label={post.category}
-            variant="outlined"
-            size="small"
-            sx={{
-              mb: 2.5,
-              fontSize: 12,
-              color: 'text.secondary',
-              borderColor: 'divider',
-              bgcolor: 'grey.50',
-              borderRadius: '20px',
-              height: 26,
-            }}
-          />
+          <Badge variant="outline" className="mb-5 h-[26px] rounded-full bg-neutral-50 px-3 text-caption text-muted-foreground dark:bg-neutral-800">
+            {post.category}
+          </Badge>
 
-          <Typography
-            variant="h4"
-            component="h2"
-            sx={{
-              fontWeight: 700,
-              lineHeight: 1.3,
-              letterSpacing: '-0.03em',
-              color: 'text.primary',
-              mb: 3,
-              whiteSpace: 'pre-line',
-              fontSize: { xs: 24, md: 32 },
-            }}
-          >
+          <Typography variant="h3" as="h2" className="mb-6 whitespace-pre-line md:text-h2">
             {post.title}
           </Typography>
 
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'text.disabled',
-              lineHeight: 1.75,
-              letterSpacing: '-0.01em',
-              mb: 4.5,
-            }}
-          >
-            {post.excerpt}
-          </Typography>
+          <Typography variant="body2" color="subtle" className="mb-9">{post.excerpt}</Typography>
 
           <Button
-            href={post.href}
-            component="a"
-            variant="contained"
-            disableElevation
-            sx={{
-              bgcolor: 'grey.900',
-              color: '#fff',
-              borderRadius: '10px',
-              px: 3.5,
-              py: 1.5,
-              fontSize: 14,
-              fontWeight: 600,
-              letterSpacing: '-0.01em',
-              alignSelf: 'flex-start',
-              textTransform: 'none',
-              '&:hover': {
-                bgcolor: 'grey.700',
-                transform: 'translateY(-1px)',
-              },
-              transition: 'background 0.18s, transform 0.18s',
-            }}
+            asChild
+            className="h-auto rounded-[10px] bg-neutral-900 px-7 py-3 text-subtitle2 font-semibold text-white hover:-translate-y-px hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
-            Read More
+            <Link href={post.href}>Read More</Link>
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
     </>
   )
 }
 
 export default PinnedPostCard
-

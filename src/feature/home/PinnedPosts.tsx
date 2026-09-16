@@ -1,5 +1,4 @@
 'use client'
-import { Box } from '@mui/material'
 import type { Post } from '@core/domain/post'
 import { useSlider } from '@core/hooks/useSlider'
 import { SliderArrowButton } from '@ds/navigation/SliderArrowButton'
@@ -17,29 +16,16 @@ export function PinnedPosts({ posts, autoPlayInterval = 5000 }: PinnedPostsProps
     autoPlayInterval,
   })
 
-  const post = posts[current]
-
   return (
-    <Box component="section" sx={{ width: '100%', userSelect: 'none' }}>
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-          minHeight: { xs: 'auto', sm: 380, md: 420 },
-          position: 'relative',
-        }}
-      >
-        <PinnedPostCard post={post} index={current} animating={animating} direction={direction} />
+    <section aria-roledescription="carousel" aria-label="고정 포스트" className="w-full select-none">
+      <div className="relative grid grid-cols-1 sm:min-h-[380px] md:min-h-[420px] md:grid-cols-2">
+        <PinnedPostCard post={posts[current]} index={current} animating={animating} direction={direction} />
         <SliderArrowButton direction="left" onClick={prev} />
         <SliderArrowButton direction="right" onClick={next} />
-      </Box>
-
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <SliderDots total={posts.length} current={current} onDotClick={go} />
-      </Box>
-    </Box>
+      </div>
+      <SliderDots total={posts.length} current={current} onDotClick={go} />
+    </section>
   )
 }
 
 export default PinnedPosts
-

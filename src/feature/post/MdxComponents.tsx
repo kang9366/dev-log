@@ -1,31 +1,23 @@
+'use client'
 /**
- * MDX 렌더링 시 HTML 요소를 MUI 기반 스타일 컴포넌트로 교체.
- * MDXProvider의 components prop에 전달합니다.
+ * MDX 렌더링 시 HTML 요소를 스타일 컴포넌트로 교체.
+ * MDXProvider 의 components prop 에 전달합니다.
  */
-import {
-  Box,
-  Divider,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Tooltip,
-  Typography,
-  type SxProps,
-  type Theme,
-} from '@mui/material'
-import { alpha } from '@mui/material/styles'
-import React, { useState, type ComponentPropsWithoutRef } from 'react'
-import { fontFamily } from '@ds/tokens/typography'
+import React, { useRef, useState, type ComponentPropsWithoutRef } from 'react'
+import { Check, Copy } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Typography } from '@/components/ui/typography'
 
 // ── 헤딩 텍스트 → slug id 변환 ───────────────
+function textOf(node: React.ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(textOf).join('')
+  if (React.isValidElement(node)) return textOf((node.props as { children?: React.ReactNode }).children)
+  return ''
+}
+
 function toHeadingId(children: React.ReactNode): string {
-  const text = React.Children.toArray(children)
-    .map((c) => (typeof c === 'string' ? c : ''))
-    .join('')
-  return text
+  return textOf(children)
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '-')
@@ -34,31 +26,22 @@ function toHeadingId(children: React.ReactNode): string {
     .replace(/^-|-$/g, '')
 }
 
-// ── 공통 sx ──────────────────────────────────
-const proseText: SxProps<Theme> = {
-  fontFamily: fontFamily.sans,
-  color: 'text.primary',   // ← theme-aware
-  lineHeight: 1.75,
+// ── 헤딩 ─────────────────────────────────────
+function H1({ children }: ComponentPropsWithoutRef<'h1'>) {
+  return (
+    <Typography variant="h2" as="h1" className="mt-10 mb-4 md:text-h1">
+      {children}
+    </Typography>
+  )
 }
 
-// ── 헤딩 ─────────────────────────────────────
 function H2({ children }: ComponentPropsWithoutRef<'h2'>) {
-  const id = toHeadingId(children)
   return (
     <Typography
-      id={id}
-      variant="h2"
-      component="h2"
-      sx={{
-        ...proseText,
-        fontSize: { xs: '1.5rem', md: '1.875rem' },
-        fontWeight: 700,
-        mt: 5, mb: 2, pb: 1,
-        borderBottom: '1px solid',
-        borderColor: 'divider',          // ← theme-aware
-        letterSpacing: '-0.02em',
-        scrollMarginTop: '74px',
-      }}
+      variant="h3"
+      as="h2"
+      id={toHeadingId(children)}
+      className="mt-10 mb-4 scroll-mt-[74px] border-b pb-2 md:text-h2"
     >
       {children}
     </Typography>
@@ -66,389 +49,202 @@ function H2({ children }: ComponentPropsWithoutRef<'h2'>) {
 }
 
 function H3({ children }: ComponentPropsWithoutRef<'h3'>) {
-  const id = toHeadingId(children)
   return (
-    <Typography
-      id={id}
-      variant="h3"
-      component="h3"
-      sx={{
-        ...proseText,
-        fontSize: { xs: '1.25rem', md: '1.5rem' },
-        fontWeight: 600,
-        mt: 4,
-        mb: 1.5,
-        letterSpacing: '-0.01em',
-        scrollMarginTop: '74px',
-      }}
-    >
+    <Typography variant="h4" as="h3" id={toHeadingId(children)} className="mt-8 mb-3 scroll-mt-[74px] md:text-h3">
       {children}
     </Typography>
   )
 }
 
 function H4({ children }: ComponentPropsWithoutRef<'h4'>) {
-  return (
-    <Typography
-      variant="h4"
-      component="h4"
-      sx={{ ...proseText, fontSize: '1.125rem', fontWeight: 600, mt: 3, mb: 1 }}
-    >
-      {children}
-    </Typography>
-  )
+  return <Typography variant="h5" as="h4" className="mt-6 mb-2">{children}</Typography>
 }
 
 // ── 본문 ─────────────────────────────────────
 function P({ children }: ComponentPropsWithoutRef<'p'>) {
+  return <Typography variant="prose" className="mb-5">{children}</Typography>
+}
+
+function A({ children, href }: ComponentPropsWithoutRef<'a'>) {
   return (
-    <Typography
-      component="p"
-      sx={{ ...proseText, fontSize: '1rem', mb: 2.5 }}
-    >
+    <a href={href} className="text-primary underline underline-offset-4 hover:text-[#4338ca] dark:hover:text-[#a5b4fc]">
       {children}
-    </Typography>
+    </a>
   )
 }
 
 // ── 인용구 ───────────────────────────────────
 function Blockquote({ children }: ComponentPropsWithoutRef<'blockquote'>) {
   return (
-    <Box
-      component="blockquote"
-      sx={{
-        my: 3, pl: 3, py: 0.5,
-        borderLeft: '4px solid',
-        borderColor: 'primary.main',     // ← theme-aware
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),  // ← theme-aware
-        borderRadius: '0 8px 8px 0',
-        '& p': { mb: 0, color: 'text.secondary', fontSize: '0.9375rem' },
-      }}
-    >
+    <blockquote className="my-6 rounded-r-lg border-l-4 border-primary bg-primary/[0.08] py-1 pl-6 [&_p]:mb-0 [&_p]:text-body1 [&_p]:text-muted-foreground">
       {children}
-    </Box>
+    </blockquote>
   )
 }
 
 // ── 코드 블록 (맥 스타일) ────────────────────────────────────
 function Pre({ children }: ComponentPropsWithoutRef<'pre'>) {
   const [copied, setCopied] = useState(false)
+  const preRef = useRef<HTMLPreElement>(null)
 
-  // <code> 자식에서 언어 클래스 및 텍스트 추출
+  // <code className="language-xxx"> 에서 언어 추출
   let language = ''
-  let rawText  = ''
-
-  React.Children.forEach(children as React.ReactNode, (child) => {
+  React.Children.forEach(children, (child) => {
     if (!React.isValidElement(child)) return
     const cls = (child.props as { className?: string }).className ?? ''
-    const match = cls.match(/language-(\w+)/)
-    if (match) language = match[1]
-    rawText = String((child.props as { children?: unknown }).children ?? '').trimEnd()
+    language = cls.match(/language-(\w+)/)?.[1] ?? language
   })
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(rawText).then(() => {
+    // 구문 강조 span 이 섞여 있어서 렌더된 텍스트를 복사
+    const text = preRef.current?.textContent?.trimEnd() ?? ''
+    navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
   }
 
   return (
-    <Box
-      sx={{
-        my: 3.5,
-        borderRadius: '12px',
-        overflow: 'hidden',
-        border: '1px solid #3a3a3c',
-        bgcolor: '#1c1c1e',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
-      }}
-    >
+    <div className="my-7 overflow-hidden rounded-xl border border-[#3a3a3c] bg-[#1c1c1e] shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
       {/* ── 맥 스타일 타이틀 바 ── */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          px: '14px',
-          height: 38,
-          bgcolor: '#2c2c2e',
-          borderBottom: '1px solid #3a3a3c',
-          gap: '6px',
-          userSelect: 'none',
-        }}
-      >
-        {/* 트래픽 라이트 */}
+      <div className="relative flex h-[38px] items-center gap-1.5 border-b border-[#3a3a3c] bg-[#2c2c2e] px-3.5 select-none">
         {[
           { color: '#ff5f57', shadow: '#c0302b' },
           { color: '#febc2e', shadow: '#c08d0a' },
           { color: '#28c840', shadow: '#0a9520' },
         ].map(({ color, shadow }) => (
-          <Box
+          <span
             key={color}
-            sx={{
-              width: 12, height: 12,
-              borderRadius: '50%',
-              bgcolor: color,
-              boxShadow: `0 0 0 0.5px ${shadow}`,
-              flexShrink: 0,
-            }}
+            aria-hidden
+            className="size-3 shrink-0 rounded-full"
+            style={{ backgroundColor: color, boxShadow: `0 0 0 0.5px ${shadow}` }}
           />
         ))}
 
-        {/* 언어 라벨 — 중앙 */}
         {language && (
-          <Typography
-            sx={{
-              position: 'absolute',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              fontSize: 11,
-              color: '#8e8e93',
-              fontFamily: fontFamily.mono,
-              letterSpacing: '0.06em',
-              pointerEvents: 'none',
-            }}
-          >
+          <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 font-mono text-caption text-[#8e8e93]">
             {language}
-          </Typography>
+          </span>
         )}
 
-        {/* 복사 버튼 — 우측 */}
-        <Tooltip title={copied ? '복사됨!' : '복사'} placement="top">
-          <Box
-            component="button"
-            onClick={handleCopy}
-            sx={{
-              ml: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              px: 1,
-              py: 0.25,
-              bgcolor: 'transparent',
-              border: '1px solid transparent',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              color: copied ? '#28c840' : '#8e8e93',
-              fontSize: 11,
-              fontFamily: fontFamily.mono,
-              transition: 'all 0.15s',
-              '&:hover': {
-                bgcolor: 'rgba(255,255,255,0.08)',
-                borderColor: '#3a3a3c',
-                color: '#e5e5e7',
-              },
-            }}
-          >
-            {copied ? (
-              // 체크 아이콘
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            ) : (
-              // 복사 아이콘
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            )}
-            {copied ? 'Copied!' : 'Copy'}
-          </Box>
-        </Tooltip>
-      </Box>
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label={copied ? '복사됨' : '코드 복사'}
+          className={cn(
+            'ml-auto flex cursor-pointer items-center gap-1 rounded-[5px] border border-transparent px-2 py-0.5 font-mono text-caption transition-all',
+            'hover:border-[#3a3a3c] hover:bg-white/[0.08] hover:text-[#e5e5e7]',
+            copied ? 'text-[#28c840]' : 'text-[#8e8e93]',
+          )}
+        >
+          {copied ? <Check className="size-3" strokeWidth={2.5} /> : <Copy className="size-3" />}
+          <span aria-live="polite">{copied ? 'Copied!' : 'Copy'}</span>
+        </button>
+      </div>
 
-      {/* ── 코드 영역 ── */}
-      <Box
-        component="pre"
-        sx={{
-          m: 0,
-          p: 0,
-          bgcolor: '#1c1c1e',
-          '& code': {
-            display: 'block',
-            p: '20px 24px',
-            overflowX: 'auto',
-            fontFamily: fontFamily.mono,
-            fontSize: '0.875rem',
-            lineHeight: 1.6,
-            color: '#e5e5e7',
-            bgcolor: 'transparent',
-            border: 'none',
-            borderRadius: 0,
-          },
-        }}
+      {/* ── 코드 영역 (인라인 Code 스타일을 부모 셀렉터로 덮어씀) ── */}
+      <pre
+        ref={preRef}
+        className="m-0 bg-[#1c1c1e] p-0 [&_code]:block [&_code]:overflow-x-auto [&_code]:rounded-none [&_code]:border-0 [&_code]:bg-transparent [&_code]:px-6 [&_code]:py-5 [&_code]:font-mono [&_code]:text-code [&_code]:text-[#e5e5e7]"
       >
         {children}
-      </Box>
-    </Box>
+      </pre>
+    </div>
   )
 }
 
 // ── 인라인 코드 ───────────────────────────────
-function Code({ children }: ComponentPropsWithoutRef<'code'>) {
+function Code({ children, className }: ComponentPropsWithoutRef<'code'>) {
+  // 코드 블록(```)의 code 는 hljs 클래스만 유지, 스타일은 Pre 가 담당
+  if (className?.includes('hljs')) return <code className={className}>{children}</code>
+
   return (
-    <Box
-      component="code"
-      sx={(theme) => ({
-        px: 0.75, py: 0.25,
-        borderRadius: '5px',
-        bgcolor: alpha(theme.palette.primary.main, 0.1),
-        color: theme.palette.primary.dark,
-        fontFamily: fontFamily.mono,
-        fontSize: '0.85em',
-        border: '1px solid',
-        borderColor: alpha(theme.palette.primary.main, 0.25),
-        ...theme.applyStyles('dark', { color: theme.palette.primary.light }),
-      })}
-    >
+    <code className="rounded-[5px] border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[0.85em] text-[#4338ca] dark:text-[#a5b4fc]">
       {children}
-    </Box>
+    </code>
   )
 }
 
 // ── 목록 ─────────────────────────────────────
 function Ul({ children }: ComponentPropsWithoutRef<'ul'>) {
-  return (
-    <Box
-      component="ul"
-      sx={{ ...proseText, pl: 3, mb: 2.5, '& li': { mb: 0.75 } }}
-    >
-      {children}
-    </Box>
-  )
+  return <ul className="mb-5 list-disc pl-6 text-prose [&_li]:mb-1.5">{children}</ul>
 }
 
 function Ol({ children }: ComponentPropsWithoutRef<'ol'>) {
-  return (
-    <Box
-      component="ol"
-      sx={{ ...proseText, pl: 3, mb: 2.5, '& li': { mb: 0.75 } }}
-    >
-      {children}
-    </Box>
-  )
+  return <ol className="mb-5 list-decimal pl-6 text-prose [&_li]:mb-1.5">{children}</ol>
 }
 
 function Li({ children }: ComponentPropsWithoutRef<'li'>) {
-  return (
-    <Box
-      component="li"
-      sx={{ ...proseText, fontSize: '1rem' }}
-    >
-      {children}
-    </Box>
-  )
+  return <li className="text-prose">{children}</li>
 }
 
 // ── 테이블 ───────────────────────────────────
 function TableWrapper({ children }: ComponentPropsWithoutRef<'table'>) {
   return (
-    <TableContainer
-      sx={{
-        my: 3,
-        border: '1px solid',
-        borderColor: 'divider',          // ← theme-aware
-        borderRadius: '10px',
-        overflow: 'hidden',
-      }}
-    >
-      <Table size="small">{children}</Table>
-    </TableContainer>
+    <div className="my-6 overflow-x-auto rounded-[10px] border">
+      <table className="w-full border-collapse text-body2">{children}</table>
+    </div>
   )
 }
 
 function Thead({ children }: ComponentPropsWithoutRef<'thead'>) {
-  return <TableHead sx={{ bgcolor: 'primary.main' }}>{children}</TableHead>
+  return <thead className="bg-primary">{children}</thead>
 }
 
 function Tbody({ children }: ComponentPropsWithoutRef<'tbody'>) {
-  return <TableBody>{children}</TableBody>
+  return <tbody>{children}</tbody>
 }
 
 function Tr({ children }: ComponentPropsWithoutRef<'tr'>) {
   return (
-    <TableRow
-      sx={{
-        '&:last-child td': { border: 0 },
-        '&:hover': { bgcolor: 'action.hover' },  // ← theme-aware
-      }}
-    >
+    <tr className="hover:bg-black/[0.04] dark:hover:bg-white/[0.08] [&:last-child>td]:border-0">
       {children}
-    </TableRow>
+    </tr>
   )
 }
 
 function Th({ children }: ComponentPropsWithoutRef<'th'>) {
   return (
-    <TableCell
-      sx={{
-        fontWeight: 600,
-        fontSize: '0.8125rem',
-        color: '#fff',
-        borderBottom: '1px solid',
-        borderColor: 'primary.dark',   // ← theme-aware
-        py: 1.5,
-        px: 2,
-        whiteSpace: 'nowrap',
-        letterSpacing: '0.02em',
-      }}
-    >
+    <th className="border-b border-[#4338ca] px-4 py-3 text-left text-subtitle2 font-semibold whitespace-nowrap text-white">
       {children}
-    </TableCell>
+    </th>
   )
 }
 
 function Td({ children }: ComponentPropsWithoutRef<'td'>) {
-  return (
-    <TableCell
-      sx={{
-        fontSize: '0.875rem',
-        color: 'text.primary',           // ← theme-aware
-        py: 1.5, px: 2,
-        borderBottom: '1px solid',
-        borderColor: 'divider',          // ← theme-aware
-      }}
-    >
-      {children}
-    </TableCell>
-  )
+  return <td className="border-b px-4 py-3 text-body2">{children}</td>
 }
 
 // ── 구분선 ───────────────────────────────────
 function Hr() {
-  return <Divider sx={{ my: 4 }} />
+  return <hr className="my-8 border-border" />
 }
 
 // ── 강조 ─────────────────────────────────────
 function Strong({ children }: ComponentPropsWithoutRef<'strong'>) {
-  return (
-    <Box component="strong" sx={{ fontWeight: 700, color: 'text.primary' }}>
-      {children}
-    </Box>
-  )
+  return <strong className="font-bold text-foreground">{children}</strong>
 }
 
 function Em({ children }: ComponentPropsWithoutRef<'em'>) {
-  return (
-    <Box component="em" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-      {children}
-    </Box>
-  )
+  return <em className="text-muted-foreground italic">{children}</em>
 }
 
 // ── 글자 색 (에디터 색상 피커: <span data-color="#hex">) ──
-function Span({ children, 'data-color': color }: ComponentPropsWithoutRef<'span'> & { 'data-color'?: string }) {
+function Span({ children, className, 'data-color': color }: ComponentPropsWithoutRef<'span'> & { 'data-color'?: string }) {
   const safeColor = color && /^#[0-9a-f]{3,8}$/i.test(color) ? color : undefined
-  return <span style={safeColor ? { color: safeColor } : undefined}>{children}</span>
+  // className 유지: 코드 블록 구문 강조 span(hljs-keyword 등)도 이 컴포넌트를 거침
+  return <span className={className} style={safeColor ? { color: safeColor } : undefined}>{children}</span>
 }
 
 // ── Public export ─────────────────────────────
 export const mdxComponents = {
   span:       Span,
+  h1:         H1,
   h2:         H2,
   h3:         H3,
   h4:         H4,
   p:          P,
+  a:          A,
   blockquote: Blockquote,
   pre:        Pre,
   code:       Code,
