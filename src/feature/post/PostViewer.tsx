@@ -1,12 +1,18 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CalendarDays, Pencil } from 'lucide-react'
+import { ArrowLeft, CalendarDays, Code2, Download, FileText, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { MdxContent } from './MdxContent'
+import { HtmlFrame } from './HtmlFrame'
 import { useSession } from '@lib/useSession'
+import { supabase } from '@lib/supabase'
 import { formatPostDate } from '@core/domain/post'
 import type { PostSummary } from '@lib/posts'
 import { Typography } from '@/components/ui/typography'
@@ -24,7 +30,150 @@ const tagColor: Record<string, string> = {
   typescript:      '#3178c6',
   css:             '#e44d27',
   performance:     '#f5a623',
-  'design-system': '#6366f1',
+  'design-system': '#2a5cff',
+}
+
+// ── MDX 다운로드 (관리자) ──────────────────────
+// 글 페이지는 본문을 내려받지 않으므로(용량) 누를 때 조회. frontmatter + 본문
+function DownloadMdxButton({ id, slug }: { id: number; slug: string }) {
+  const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  const download = async () => {
+    setLoading(true)
+    setFailed(false)
+    const { data, error } = await supabase
+      .from('posts').select('title, tag, excerpt, image_url, published_at, body').eq('id', id).single()
+    setLoading(false)
+    if (error || !data) { console.error(error); setFailed(true); return }
+
+    // JSON 문자열은 그대로 유효한 YAML 값 → 따옴표·콜론 이스케이프 걱정 없음
+    const meta = { title: data.title, tag: data.tag, date: data.published_at, excerpt: data.excerpt, image: data.image_url }
+    const frontmatter = Object.entries(meta).map(([k, v]) => `${k}: ${JSON.stringify(v ?? '')}`).join('\n')
+    const url = URL.createObjectURL(new Blob([`---\n${frontmatter}\n---\n\n${data.body}\n`], { type: 'text/markdown;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${slug}.mdx`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={download}
+      disabled={loading}
+      className={failed ? 'text-destructive' : 'text-muted-foreground'}
+      title={failed ? '다운로드 실패, 다시 시도' : 'MDX 파일로 다운로드'}
+    >
+      {loading ? <Loader2 className="animate-spin" /> : <Download />}
+      {failed ? '다시 시도' : '다운로드'}
+    </Button>
+  )
+}
+
+// ── 글 삭제 (관리자) ──────────────────────────
+function DeletePostButton({ id, title }: { id: number; title: string }) {
+  const router = useRouter()
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const remove = async () => {
+    setDeleting(true)
+    setError(null)
+    // RLS 로 막히면 에러 없이 0행 삭제 → 삭제된 행을 돌려받아 확인
+    const { data, error } = await supabase.from('posts').delete().eq('id', id).select('id')
+    if (error || !data?.length) {
+      setDeleting(false)
+      setError(error ? `삭제 실패: ${error.message}` : '삭제 권한이 없습니다.')
+      return
+    }
+    // ponytail: 홈·글 페이지는 revalidate 60 → 다른 방문자에겐 최대 60초 동안 보일 수 있음
+    router.replace('/')
+    router.refresh()
+  }
+
+  return (
+    <Dialog onOpenChange={(open) => { if (!open) setError(null) }}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
+          <Trash2 />
+          삭제
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>글을 삭제할까요?</DialogTitle>
+          <DialogDescription>‘{title}’ 글이 영구 삭제되며 되돌릴 수 없습니다.</DialogDescription>
+        </DialogHeader>
+        {error && <Typography variant="body2" color="destructive" role="alert">{error}</Typography>}
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">취소</Button>
+          </DialogClose>
+          <Button variant="destructive" onClick={remove} disabled={deleting}>
+            {deleting && <Loader2 className="animate-spin" />}
+            삭제
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── 보기 전환 스위치 ───────────────────────────
+const VIEW_OPTIONS = [
+  // 라벨만 TEXT. 내부 값은 mdx 그대로 — 상태·렌더 분기가 이 값을 쓴다
+  { value: 'mdx' as const, label: 'TEXT', Icon: FileText, hint: '문서 보기' },
+  { value: 'html' as const, label: 'HTML', Icon: Code2, hint: '원본 HTML 보기' },
+]
+
+/**
+ * MDX / HTML 토글.
+ * 움직이는 건 인디케이터 하나뿐 — 글자·아이콘까지 움직이면 읽는 중에 산만해진다.
+ */
+function ViewToggle({ view, onChange }: { view: 'mdx' | 'html'; onChange: (v: 'mdx' | 'html') => void }) {
+  return (
+    <div
+      role="group"
+      aria-label="보기 방식"
+      className="relative ml-auto inline-grid grid-cols-2 rounded-[10px] bg-muted p-1 ring-1 ring-border"
+    >
+      {/* 트랙 폭의 절반이라 translate-x-full 이 정확히 두 번째 칸으로 간다 */}
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-[7px]',
+          'bg-primary shadow-[0_2px_10px_rgba(42,92,255,0.45)]',
+          'transition-transform duration-250 ease-out motion-reduce:transition-none',
+          view === 'html' && 'translate-x-full',
+        )}
+      />
+      {VIEW_OPTIONS.map(({ value, label, Icon, hint }) => {
+        const active = view === value
+        return (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={active}
+            title={hint}
+            onClick={() => onChange(value)}
+            className={cn(
+              'relative z-10 flex h-7 w-[76px] items-center justify-center gap-1.5 rounded-[7px]',
+              'font-mono text-caption uppercase transition-colors duration-200',
+              'active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              active ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="size-3.5" aria-hidden />
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 // ── TOC 컴포넌트 ──────────────────────────────
@@ -34,7 +183,7 @@ function TableOfContents({ items, activeId }: { items: TocItem[]; activeId: stri
   return (
     <nav
       aria-label="목차"
-      className="sticky top-[58px] hidden max-h-[calc(100vh-66px)] w-[220px] shrink-0 self-start overflow-y-auto [scrollbar-width:none] lg:block [&::-webkit-scrollbar]:hidden"
+      className="sticky top-[92px] hidden max-h-[calc(100vh-108px)] w-[220px] shrink-0 self-start overflow-y-auto [scrollbar-width:none] lg:block [&::-webkit-scrollbar]:hidden"
     >
       <Typography variant="overline" as="p" color="subtle" className="mb-3 pl-2.5 font-bold">On this page</Typography>
       <ul>
@@ -69,10 +218,11 @@ function TableOfContents({ items, activeId }: { items: TocItem[]; activeId: stri
 
 // ── PostViewer ────────────────────────────────
 /** 글 상세. 데이터와 컴파일된 본문(code)은 서버 페이지가 넘겨줌 */
-export default function PostViewer({ post, code }: { post: PostSummary; code: string }) {
+export default function PostViewer({ post, code, html }: { post: PostSummary; code: string; html: string | null }) {
   const router = useRouter()
   const articleRef = useRef<HTMLElement>(null)
   const { isAdmin } = useSession()
+  const [view, setView] = useState<'mdx' | 'html'>('mdx')
 
   const [tocItems, setTocItems] = useState<TocItem[]>([])
   const [activeId, setActiveId] = useState('')
@@ -153,8 +303,8 @@ export default function PostViewer({ post, code }: { post: PostSummary; code: st
     let prevActiveId = ''
 
     const update = () => {
-      // banner(50px) + 여유(30px) → 이 이상 올라온 헤딩 중 마지막이 active
-      const OFFSET = 80
+      // banner(60px) + 여유(30px) → 이 이상 올라온 헤딩 중 마지막이 active
+      const OFFSET = 90
       let activeIdx = 0
 
       for (let i = 0; i < headingEls.length; i++) {
@@ -187,47 +337,64 @@ export default function PostViewer({ post, code }: { post: PostSummary; code: st
     }
   }, [tocItems])
 
-  const accent = tagColor[post.tag] ?? '#6366f1'
+  const accent = tagColor[post.tag] ?? '#2a5cff'
 
   return (
     <div className="pb-20">
       {/* 뒤로가기 / 편집 */}
-      <div className="mb-8 flex items-center gap-2">
-        <Button variant="ghost" size="lg" onClick={() => router.back()} className="text-muted-foreground">
-          <ArrowLeft />
-          목록으로
+      <div className="mb-8 flex max-w-[740px] items-center gap-1">
+        {/* 뒤로가기(history) 아니라 항상 홈으로: 외부 링크로 들어와도 목록이 나옴 */}
+        <Button asChild variant="ghost" size="sm" className="group text-foreground hover:bg-foreground/8">
+          <Link href="/">
+            <ArrowLeft className="transition-transform duration-200 ease-out group-hover:-translate-x-0.5 motion-reduce:transition-none" />
+            목록으로
+          </Link>
         </Button>
         {isAdmin && (
-          <Button variant="ghost" size="lg" onClick={() => router.push(`/editor/${post.slug}`)} className="text-muted-foreground" title="MDX 편집">
-            <Pencil />
-            편집
-          </Button>
+          <>
+            <Button variant="ghost" size="sm" onClick={() => router.push(`/editor/${post.slug}`)} className="text-muted-foreground" title="MDX 편집">
+              <Pencil />
+              편집
+            </Button>
+            <DownloadMdxButton id={post.id} slug={post.slug} />
+            <DeletePostButton id={post.id} title={post.title} />
+          </>
         )}
+        {/* HTML 버전이 있을 때만 전환 */}
+        {html && <ViewToggle view={view} onChange={setView} />}
       </div>
 
-      {/* 2열 레이아웃: 본문 + TOC */}
-      <div className="flex items-start lg:gap-12">
+      {view === 'html' && html && <HtmlFrame html={html} title={post.title} />}
+
+      {/* 2열 레이아웃: 본문 + TOC. HTML 보기 중엔 숨기기만 (언마운트하면 목차 추적이 끊김) */}
+      <div className={cn('flex items-start lg:gap-12', view === 'html' && 'hidden')}>
         <article ref={articleRef} className="max-w-[740px] min-w-0 flex-1">
           <header className="mb-8 flex flex-col gap-4">
-            <div>
-              <Badge
-                variant="outline"
-                className="h-[26px] rounded-md px-2 text-caption font-semibold"
-                style={{
-                  backgroundColor: `${accent}18`,
-                  color: accent === '#000000' ? undefined : accent,
-                  borderColor: `${accent}33`,
-                }}
-              >
-                {post.tag}
-              </Badge>
+            {/* 날짜 → 태그 순의 메타 한 줄. 본문 맨 아래 떨어져 있던 날짜를 제목 위로 올렸다 */}
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="flex items-center gap-2 text-body2 text-muted-foreground">
+                <CalendarDays className="size-4" aria-hidden />
+                <time dateTime={post.published_at}>{formatPostDate(post.published_at)}</time>
+              </p>
+              {post.tag && (
+                <>
+                  <span aria-hidden className="h-4 w-px bg-border" />
+                  <Badge
+                    variant="outline"
+                    className="h-7 rounded-md px-2.5 text-body2 font-semibold"
+                    style={{
+                      backgroundColor: `${accent}18`,
+                      color: accent === '#000000' ? undefined : accent,
+                      borderColor: `${accent}33`,
+                    }}
+                  >
+                    {post.tag}
+                  </Badge>
+                </>
+              )}
             </div>
             <Typography variant="h2" as="h1" className="md:text-h1">{post.title}</Typography>
             <Typography variant="prose" color="muted">{post.excerpt}</Typography>
-            <p className="flex items-center gap-1.5 text-caption text-neutral-400">
-              <CalendarDays className="size-3.5" aria-hidden />
-              <time dateTime={post.published_at}>{formatPostDate(post.published_at)}</time>
-            </p>
           </header>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}

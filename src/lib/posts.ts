@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { PostRecord } from '@core/domain/post'
 
-export type PostSummary = Omit<PostRecord, 'body'>
+export type PostSummary = Omit<PostRecord, 'body' | 'html'>
 
 /** 서버 전용: 공개(출간) 글 조회. 세션 없이 publishable 키로 RLS 적용 */
 const db = () =>

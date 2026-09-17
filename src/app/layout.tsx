@@ -1,14 +1,20 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Archivo, IBM_Plex_Mono } from 'next/font/google'
 import { AppThemeProvider } from '@shell/ThemeContext'
 import { cn } from '@/lib/utils'
 import './globals.css'
 
-const inter = Inter({
+const archivo = Archivo({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
   display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-archivo',
+})
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  display: 'swap',
+  variable: '--font-plex-mono',
 })
 
 export const metadata: Metadata = {
@@ -20,7 +26,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // next-themes 가 html class 를 바꾸므로 suppressHydrationWarning 필요
-    <html lang="ko" className={cn('font-sans', inter.variable)} suppressHydrationWarning>
+    <html lang="ko" className={cn('font-sans', archivo.variable, plexMono.variable)} suppressHydrationWarning>
       <body>
         <AppThemeProvider>{children}</AppThemeProvider>
       </body>

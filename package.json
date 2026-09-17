@@ -9,7 +9,10 @@
     "start": "next start",
     "lint": "eslint .",
     "check:mdx": "node --experimental-strip-types --no-warnings scripts/check-mdx-sanitizer.mts",
-    "check:cn": "node --experimental-strip-types --no-warnings scripts/check-cn.mts"
+    "check:cn": "node --experimental-strip-types --no-warnings scripts/check-cn.mts",
+    "check:table": "node --experimental-strip-types --no-warnings scripts/check-table-md.mts",
+    "check:image": "node --experimental-strip-types --no-warnings scripts/check-image-md.mts",
+    "check:html": "node --experimental-strip-types --no-warnings scripts/check-inject-html.mts"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",

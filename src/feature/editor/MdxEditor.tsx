@@ -10,19 +10,21 @@ import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
 import { MDXProvider } from '@mdx-js/react'
 import {
   ArrowLeft, Bold, Code as CodeIcon, ImageIcon, Italic, Link as LinkIcon,
-  Loader2, Quote, Strikethrough,
+  FileCode, Loader2, Quote, Strikethrough, Table,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import { mdxComponents } from '../post/MdxComponents'
 import { useRuntimeMdx } from './useRuntimeMdx'
+import { insertTable, tableEditor } from './tableWidget'
+import { imageEditor } from './imageWidget'
+import { TagInput } from './TagInput'
 import { useThemeMode } from '@shell/ThemeContext'
 import { Banner } from '@shell/Banner'
 import { supabase } from '@lib/supabase'
 import { useSession } from '@lib/useSession'
-import { formatPostDate } from '@core/domain/post'
 import { Typography } from '@/components/ui/typography'
-
-const TEAL = '#12b886'
 
 // ── 에디터 테마 (module-level 상수 → 안정적 레퍼런스) ────────
 // theme prop에 직접 전달해 @uiw/react-codemirror 내장 light 테마를 완전히 대체한다.
@@ -32,7 +34,7 @@ const lightEditorTheme = EditorView.theme({
   '.cm-scroller':   { overflow: 'auto', fontFamily: '"JetBrains Mono","Fira Code",monospace', lineHeight: '1.7', fontSize: '14px' },
   '.cm-content':    { padding: '24px 0 200px', caretColor: '#212529' },
   '.cm-line':       { padding: '0 40px' },
-  '.cm-cursor':     { borderLeftColor: TEAL },
+  '.cm-cursor':     { borderLeftColor: 'var(--primary)' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
   '.cm-gutters':    { display: 'none' },
   '.cm-selectionBackground':                       { backgroundColor: 'rgba(99,102,241,0.15)' },
@@ -45,7 +47,7 @@ const darkEditorTheme = EditorView.theme({
   '.cm-scroller':   { overflow: 'auto', fontFamily: '"JetBrains Mono","Fira Code",monospace', lineHeight: '1.7', fontSize: '14px' },
   '.cm-content':    { padding: '24px 0 200px', caretColor: '#abb2bf' },
   '.cm-line':       { padding: '0 40px', color: '#abb2bf' },
-  '.cm-cursor':     { borderLeftColor: TEAL },
+  '.cm-cursor':     { borderLeftColor: 'var(--primary)' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
   '.cm-gutters':    { display: 'none' },
   '.cm-selectionBackground':                       { backgroundColor: 'rgba(99,102,241,0.3)' },
@@ -69,6 +71,7 @@ const PALETTE = [
 interface MdxParts {
   title: string; tag: string; date: string
   slug: string; imageUrl: string; excerpt: string; body: string
+  html: string  // 글의 HTML 버전 ('' = 없음)
 }
 
 /** 제목 → URL slug (한글 유지). 비면 시간 기반 */
@@ -87,36 +90,44 @@ const toExcerpt = (body: string) =>
     .trim()
     .slice(0, 120)
 
+/** 오늘 날짜를 'YYYY-MM-DD' 로. toISOString() 은 UTC 기준이라 새벽에 하루 밀린다 */
+const todayIso = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const DEFAULT_PARTS: MdxParts = {
   title: '', tag: '',
-  date: new Date().toLocaleDateString('ko', { year: '2-digit', month: '2-digit', day: '2-digit' }),
+  date: todayIso(),
   slug: 'new-post',
   imageUrl: 'https://images.unsplash.com/photo-1555099962-4199c345e5dd?w=1200&q=80',
-  excerpt: '', body: '',
+  excerpt: '', body: '', html: '',
 }
 
 // ── 이미지 유틸 ──────────────────────────────────────────────
-let _imgSeq = 0
-const newImgId = () => `img-${Date.now()}-${_imgSeq++}`
-
-/** 에디터 커서 위치에 <img> 삽입 */
+/** 커서 줄 끝에 이미지 줄 삽입 (줄 중간을 자르지 않음). 에디터에선 imageWidget 이 이미지로 보여줌 */
 function insertImageMd(view: EditorView, src: string, alt = 'image') {
-  const id  = newImgId()
-  const { from } = view.state.selection.main
-  view.dispatch({
-    changes: { from, to: from, insert: `\n<img src="${src}" alt="${alt}" width="100%" data-img-id="${id}" />\n` },
-  })
+  const line = view.state.doc.lineAt(view.state.selection.main.from)
+  const tag  = `<img src="${src}" alt="${alt.replace(/"/g, '')}" width="100%" />`
+  const insert = `${line.length ? '\n' : ''}${tag}\n`
+  view.dispatch({ changes: { from: line.to, insert }, selection: { anchor: line.to + insert.length } })
   view.focus()
 }
 
-/** body 문자열에서 data-img-id 가 일치하는 <img> 의 width 를 업데이트 */
-function updateImageWidth(body: string, imgId: string, newWidth: number): string {
-  return body.replace(/(<img\s[^>]*?>)/gs, (match) => {
-    if (!match.includes(`data-img-id="${imgId}"`)) return match
-    if (/\bwidth="[^"]*"/.test(match))
-      return match.replace(/\bwidth="[^"]*"/, `width="${newWidth}px"`)
-    return match.replace('<img', `<img width="${newWidth}px"`)
-  })
+// ── 이미지 업로드 (Supabase Storage covers 버킷, 관리자만 insert 가능) ──
+// 표지(cover/)와 본문 이미지(body/)를 같은 버킷에 폴더로 나눠 저장
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024 // 버킷 file_size_limit 과 동일
+
+async function uploadImage(file: File, folder: 'cover' | 'body'): Promise<string> {
+  if (!IMAGE_TYPES.includes(file.type)) throw new Error('JPG·PNG·WebP·GIF·AVIF 이미지만 올릴 수 있습니다.')
+  if (file.size > IMAGE_MAX_BYTES) throw new Error('5MB 이하 이미지만 올릴 수 있습니다.')
+  // 매번 새 파일명 → 덮어쓰기 없음, CDN 캐시 길게
+  // ponytail: 교체·삭제한 이미지 파일은 버킷에 남음. 용량 문제 되면 저장 시 안 쓰는 경로 정리 추가
+  const path = `${folder}/${crypto.randomUUID()}.${file.name.split('.').pop()?.toLowerCase() || 'img'}`
+  const { error } = await supabase.storage.from('covers').upload(path, file, { contentType: file.type, cacheControl: '31536000' })
+  if (error) throw new Error(`업로드 실패: ${error.message}`)
+  return supabase.storage.from('covers').getPublicUrl(path).data.publicUrl
 }
 
 // ── 드래그 리사이저 (splitPane) ──────────────────────────────
@@ -161,86 +172,6 @@ function fmtBlock(v: EditorView) {
   v.dispatch({ changes: { from, to, insert: `\`\`\`\n${sel}\n\`\`\`` } })
   v.focus()
 }
-
-// ── 리사이저블 이미지 (preview 전용) ────────────────────────
-interface ResizableImgProps extends React.ImgHTMLAttributes<HTMLImageElement> {
-  'data-img-id'?: string
-  onResize: (id: string, width: number) => void
-}
-
-function ResizableImg({
-  src, alt, width: widthProp, 'data-img-id': imgId, onResize,
-}: ResizableImgProps) {
-  const wrapRef   = useRef<HTMLDivElement>(null)
-  const dragging  = useRef(false)
-  const startX    = useRef(0)
-  const startW    = useRef(0)
-  const [hovered, setHovered] = useState(false)
-  const [width, setWidth]     = useState<number | null>(() => {
-    if (typeof widthProp === 'number') return widthProp
-    if (typeof widthProp === 'string' && widthProp.endsWith('px'))
-      return parseInt(widthProp, 10)
-    return null // null = 100%
-  })
-
-  const onHandleDown = useCallback((e: React.MouseEvent) => {
-    if (!imgId) return
-    e.preventDefault(); e.stopPropagation()
-    dragging.current = true
-    startX.current   = e.clientX
-    startW.current   = wrapRef.current?.offsetWidth ?? 500
-
-    const onMove = (e: MouseEvent) => {
-      if (!dragging.current) return
-      setWidth(Math.max(80, Math.min(900, startW.current + (e.clientX - startX.current))))
-    }
-    const onUp = (e: MouseEvent) => {
-      dragging.current = false
-      const finalW = Math.max(80, Math.min(900, startW.current + (e.clientX - startX.current)))
-      setWidth(finalW)
-      onResize(imgId!, finalW)
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }, [imgId, onResize])
-
-  return (
-    <div
-      ref={wrapRef}
-      className="relative my-4 inline-block max-w-full rounded-lg leading-none outline-2 outline-transparent transition-[outline-color] duration-150 hover:outline-[#6366f1]"
-      style={{ width: width ? `${width}px` : '100%' }}
-      onMouseEnter={() => setIsHoveredTrue(setHovered)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt ?? ''} className="block w-full rounded-lg" />
-
-      {/* 크기 라벨 */}
-      {hovered && (
-        <span className="pointer-events-none absolute top-1.5 left-1.5 rounded bg-black/55 px-1.5 py-0.5 font-mono text-caption text-white">
-          {width ? `${width}px` : '100%'}
-        </span>
-      )}
-
-      {/* 리사이즈 핸들 (우측 하단) */}
-      {hovered && imgId && (
-        <div
-          onMouseDown={onHandleDown}
-          title="드래그하여 크기 조절"
-          className="absolute right-1.5 bottom-1.5 flex size-[18px] cursor-se-resize items-center justify-center rounded bg-[#6366f1] hover:bg-[#4f46e5]"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-            <path d="M2 8L8 2M5 8L8 5M8 8V8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-        </div>
-      )}
-    </div>
-  )
-}
-// setState helper to avoid inline arrow in onMouseEnter
-function setIsHoveredTrue(set: React.Dispatch<React.SetStateAction<boolean>>) { set(true) }
 
 // ── 툴바 버튼 ────────────────────────────────────────────────
 function TbBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
@@ -306,6 +237,8 @@ export default function MdxEditor() {
   const [saving, setSaving]       = useState<'draft' | 'publish' | null>(null)
   const [saveMsg, setSaveMsg]     = useState<{ ok: boolean; text: string } | null>(null)
   const pathname = usePathname()
+  const [coverUploading, setCoverUploading] = useState(false)
+  const [infoError, setInfoError]           = useState<string | null>(null) // 표지·HTML 업로드 오류
   const { isAdmin, ready: sessionReady } = useSession()
 
   // 관리자 아니면 → 로그인 페이지로
@@ -331,8 +264,8 @@ export default function MdxEditor() {
         if (error) console.error(error)
         if (data) {
           setParts({
-            title: data.title, tag: data.tag, date: formatPostDate(data.published_at),
-            slug: data.slug, imageUrl: data.image_url, excerpt: data.excerpt, body: data.body,
+            title: data.title, tag: data.tag, date: data.published_at?.slice(0, 10) ?? todayIso(),
+            slug: data.slug, imageUrl: data.image_url, excerpt: data.excerpt, body: data.body, html: data.html ?? '',
           })
           setPostId(data.id)
           setPublished(data.published)
@@ -347,6 +280,43 @@ export default function MdxEditor() {
     []
   )
 
+  const handleCoverFile = useCallback(async (file: File | undefined) => {
+    if (!file) return
+    setInfoError(null)
+    setCoverUploading(true)
+    try {
+      set('imageUrl', await uploadImage(file, 'cover'))
+    } catch (e) {
+      setInfoError((e as Error).message)
+    } finally {
+      setCoverUploading(false)
+    }
+  }, [set])
+
+  // 글의 HTML 버전: 파일 내용을 그대로 저장 (posts.html). 글 페이지에서 MDX ⇄ HTML 전환
+  const htmlInputRef = useRef<HTMLInputElement>(null)
+  const handleHtmlFile = useCallback(async (file: File | undefined) => {
+    if (!file) return
+    setInfoError(null)
+    if (!/\.html?$/i.test(file.name)) { setInfoError('.html 파일만 올릴 수 있습니다.'); return }
+    if (file.size > 2 * 1024 * 1024) { setInfoError('2MB 이하 HTML 파일만 올릴 수 있습니다.'); return }
+    set('html', await file.text())
+  }, [set])
+
+  // 본문 이미지: 업로드 후 커서 위치에 <img> 삽입 (툴바·붙여넣기·끌어다 놓기 공통)
+  const bodyImageInputRef = useRef<HTMLInputElement>(null)
+  const uploadIntoBody = useCallback(async (files: File[]) => {
+    const view = viewRef.current
+    if (!view || !files.length) return
+    setSaveMsg({ ok: true, text: '이미지 업로드 중…' })
+    try {
+      for (const f of files) insertImageMd(view, await uploadImage(f, 'body'), f.name)
+      setSaveMsg(null)
+    } catch (e) {
+      setSaveMsg({ ok: false, text: (e as Error).message })
+    }
+  }, [])
+
   // ── 이미지 드래그드롭 ───────────────────────────────────────
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (Array.from(e.dataTransfer.items).some(i => i.type.startsWith('image/'))) {
@@ -355,27 +325,40 @@ export default function MdxEditor() {
   }, [])
   const handleDragLeave = useCallback(() => setDragOver(false), [])
   const handleDrop = useCallback((e: React.DragEvent) => {
+    // 에디터 본문에 떨어뜨린 건 CodeMirror 핸들러가 이미 처리
+    if (e.defaultPrevented) { setDragOver(false); return }
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
     if (!files.length) return
     e.preventDefault(); setDragOver(false)
-    const view = viewRef.current; if (!view) return
-    files.forEach(f => insertImageMd(view, URL.createObjectURL(f), f.name))
-  }, [])
+    uploadIntoBody(files)
+  }, [uploadIntoBody])
 
-  // ── 이미지 붙여넣기 (CodeMirror Extension) ─────────────────
+  // ── 이미지 붙여넣기·끌어다 놓기 (CodeMirror Extension) ──────
+  // CodeMirror 기본 drop 은 파일을 텍스트로 읽어 넣으므로 이미지면 가로챔
   const pasteImgExt = useMemo(() =>
     EditorView.domEventHandlers({
-      paste: (e, view) => {
+      drop: (e, view) => {
+        const files = Array.from(e.dataTransfer?.files ?? []).filter(f => f.type.startsWith('image/'))
+        if (!files.length) return false
+        e.preventDefault()
+        setDragOver(false)
+        // 떨어뜨린 위치의 줄 뒤에 삽입
+        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY })
+        if (pos != null) view.dispatch({ selection: { anchor: pos } })
+        uploadIntoBody(files)
+        return true
+      },
+      paste: (e) => {
         const items = Array.from(e.clipboardData?.items ?? [])
         const img   = items.find(i => i.type.startsWith('image/'))
         if (!img) return false
         e.preventDefault()
         const file = img.getAsFile(); if (!file) return false
-        insertImageMd(view, URL.createObjectURL(file), 'pasted-image')
+        uploadIntoBody([file])
         return true
       },
     }),
-  [])
+  [uploadIntoBody])
 
   // ── 텍스트 선택 → 색상 피커 위치 계산 ─────────────────────
   const colorExt = useMemo(() =>
@@ -413,17 +396,6 @@ export default function MdxEditor() {
     view.focus()
   }, [selPicker])
 
-  // ── preview 에서 이미지 리사이즈 → body 업데이트 ───────────
-  const handleImageResize = useCallback((id: string, width: number) => {
-    setParts(p => ({ ...p, body: updateImageWidth(p.body, id, width) }))
-  }, [])
-
-  const previewComponents = useMemo(() => ({
-    ...mdxComponents,
-    img: (props: React.ImgHTMLAttributes<HTMLImageElement> & { 'data-img-id'?: string }) => (
-      <ResizableImg {...props} onResize={handleImageResize} />
-    ),
-  }), [handleImageResize])
 
   // MDX 컴파일 - 50ms 디바운스: 빠른 타이핑 중 컴파일 스킵, 살짝 멈추면 즉시 반영
   const { Component, error } = useRuntimeMdx(parts.body, 50)
@@ -443,6 +415,8 @@ export default function MdxEditor() {
       body: parts.body,
       image_url: parts.imageUrl,
       excerpt: parts.excerpt || toExcerpt(parts.body),
+      html: parts.html || null,
+      published_at: parts.date || todayIso(),
       // 출간한 글을 임시저장해도 비공개로 되돌리지 않음
       published: publish || published,
     }
@@ -475,6 +449,8 @@ export default function MdxEditor() {
     markdown({ base: markdownLanguage, codeLanguages: languages }),
     pasteImgExt,
     colorExt,
+    tableEditor,
+    imageEditor,
     // 다크모드: One Dark 구문 색상만 사용 (배경은 theme prop으로 직접 지정)
     ...(isDark ? [syntaxHighlighting(oneDarkHighlightStyle)] : []),
     EditorView.lineWrapping,
@@ -491,15 +467,16 @@ export default function MdxEditor() {
       strike: () => fmtInline(v, '~~', '~~'),
       quote:  () => fmtLine(v, '> '),
       link:   () => fmtInline(v, '[', '](url)'),
-      image:  () => fmtInline(v, '![alt](', ')'),
+      image:  () => bodyImageInputRef.current?.click(),
       code:   () => fmtBlock(v),
+      table:  () => insertTable(v),
     }
     map[type]?.()
   }, [])
 
   if (loading) return (
     <div className="flex h-screen items-center justify-center bg-card">
-      <Loader2 className="size-8 animate-spin" style={{ color: TEAL }} aria-label="불러오는 중" />
+      <Loader2 className="size-8 animate-spin text-primary" aria-label="불러오는 중" />
     </div>
   )
 
@@ -525,14 +502,90 @@ export default function MdxEditor() {
               rows={1}
               className="w-full resize-none bg-transparent p-0 text-h1 outline-none [field-sizing:content] placeholder:text-neutral-400"
             />
-            <div aria-hidden className="mt-4 mb-5 h-[5px] w-14 rounded-[3px]" style={{ backgroundColor: TEAL }} />
-            <input
-              value={parts.tag}
-              onChange={e => set('tag', e.target.value)}
-              placeholder="태그를 입력하세요"
-              aria-label="태그"
-              className="mb-3 w-full bg-transparent p-0 text-body1 text-muted-foreground outline-none placeholder:text-neutral-400"
-            />
+            {/* 글 정보 (홈 카드에 쓰임): 표지 · 태그 · 목록 요약 */}
+            <div className="mt-5 mb-4 flex gap-4">
+              <label
+                onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                onDrop={e => { e.preventDefault(); e.stopPropagation(); handleCoverFile(e.dataTransfer.files[0]) }}
+                className="group/cover relative flex aspect-[3/2] w-40 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed text-caption text-neutral-400 transition-colors hover:border-primary hover:text-primary"
+              >
+                <input
+                  type="file"
+                  accept={IMAGE_TYPES.join(',')}
+                  className="sr-only"
+                  aria-label="표지 이미지 업로드"
+                  disabled={coverUploading}
+                  onChange={e => { handleCoverFile(e.target.files?.[0]); e.target.value = '' }}
+                />
+                {parts.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={parts.imageUrl} alt="표지 미리보기" className="absolute inset-0 size-full object-cover" />
+                )}
+                <span className={cn(
+                  'relative flex flex-col items-center gap-1 text-center',
+                  parts.imageUrl && 'rounded-md bg-black/55 px-2 py-1 text-white opacity-0 transition-opacity group-hover/cover:opacity-100',
+                  coverUploading && 'opacity-100',
+                )}>
+                  {coverUploading ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
+                  {coverUploading ? '업로드 중' : parts.imageUrl ? '표지 변경' : '표지 업로드'}
+                </span>
+              </label>
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <Label htmlFor="post-tag" className="w-10 shrink-0 text-muted-foreground">태그</Label>
+                  <TagInput id="post-tag" value={parts.tag} onChange={tag => set('tag', tag)} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Label htmlFor="post-date" className="w-10 shrink-0 text-muted-foreground">날짜</Label>
+                  <input
+                    id="post-date"
+                    type="date"
+                    value={parts.date}
+                    onChange={e => set('date', e.target.value)}
+                    className="rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-body2 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:[color-scheme:dark]"
+                  />
+                </div>
+                <div className="flex items-start gap-3">
+                  <Label htmlFor="excerpt" className="mt-2.5 w-10 shrink-0 text-muted-foreground">요약</Label>
+                  <textarea
+                    id="excerpt"
+                    value={parts.excerpt}
+                    onChange={e => set('excerpt', e.target.value)}
+                    // 비우면 저장할 때 본문 앞부분으로 자동 생성 → 그 결과를 미리 보여줌
+                    placeholder={toExcerpt(parts.body) || '비워두면 본문 앞부분으로 자동 생성'}
+                    rows={2}
+                    maxLength={200}
+                    className="w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-body2 outline-none [field-sizing:content] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Label htmlFor="post-html" className="w-10 shrink-0 text-muted-foreground">HTML</Label>
+                  <input
+                    ref={htmlInputRef}
+                    id="post-html"
+                    type="file"
+                    accept=".html,.htm,text/html"
+                    className="sr-only"
+                    onChange={e => { handleHtmlFile(e.target.files?.[0]); e.target.value = '' }}
+                  />
+                  {parts.html ? (
+                    <div className="flex min-w-0 items-center gap-1">
+                      <FileCode className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      <Typography variant="body2" className="mr-1">HTML 버전</Typography>
+                      <Typography variant="caption" color="muted" className="mr-1 font-mono">{Math.ceil(parts.html.length / 1024)}KB</Typography>
+                      <Button variant="ghost" size="sm" onClick={() => htmlInputRef.current?.click()}>교체</Button>
+                      <Button variant="ghost" size="sm" onClick={() => set('html', '')} className="text-muted-foreground hover:text-destructive">제거</Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => htmlInputRef.current?.click()}>
+                      <FileCode />
+                      .html 파일 올리기
+                    </Button>
+                  )}
+                </div>
+                {infoError && <Typography variant="caption" color="destructive" role="alert">{infoError}</Typography>}
+              </div>
+            </div>
             <div role="toolbar" aria-label="서식" className="flex flex-wrap items-center gap-0.5 border-y py-1.5">
               {(['h1','h2','h3','h4'] as const).map(h => (
                 <TbBtn key={h} onClick={() => fmt(h)} title={`제목 ${h[1]}`}>
@@ -547,7 +600,16 @@ export default function MdxEditor() {
               <TbBtn onClick={() => fmt('quote')}  title="인용구"><Quote /></TbBtn>
               <TbBtn onClick={() => fmt('link')}   title="링크 삽입"><LinkIcon /></TbBtn>
               <TbBtn onClick={() => fmt('image')}  title="이미지 삽입"><ImageIcon /></TbBtn>
+              <input
+                ref={bodyImageInputRef}
+                type="file"
+                accept={IMAGE_TYPES.join(',')}
+                multiple
+                className="hidden"
+                onChange={e => { uploadIntoBody(Array.from(e.target.files ?? [])); e.target.value = '' }}
+              />
               <TbBtn onClick={() => fmt('code')}   title="코드 블록"><CodeIcon /></TbBtn>
+              <TbBtn onClick={() => fmt('table')}  title="표 삽입"><Table /></TbBtn>
             </div>
           </div>
 
@@ -571,9 +633,9 @@ export default function MdxEditor() {
 
             {/* 드래그오버 오버레이 */}
             {isDragOver && (
-              <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-[#6366f1] bg-[#6366f1]/[0.08]">
-                <ImageIcon className="size-9 text-[#6366f1]" />
-                <Typography variant="subtitle1" className="font-semibold text-[#6366f1]">이미지를 놓으세요</Typography>
+              <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-primary bg-primary/10">
+                <ImageIcon className="size-9 text-primary" />
+                <Typography variant="subtitle1" className="font-semibold text-primary">이미지를 놓으세요</Typography>
               </div>
             )}
           </div>
@@ -614,7 +676,7 @@ export default function MdxEditor() {
           onMouseDown={onDown}
           role="separator"
           aria-orientation="vertical"
-          className="hidden w-1 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-border active:bg-[#12b886] md:block"
+          className="hidden w-1 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-border active:bg-primary md:block"
         />
 
         {/* ── 프리뷰 패널 ── */}
@@ -622,13 +684,13 @@ export default function MdxEditor() {
           title={parts.title}
           Component={Component}
           error={error}
-          previewComponents={previewComponents}
+          previewComponents={mdxComponents}
         />
       </div>
 
       {/* ── 하단 바 ── */}
       <div className="flex h-14 shrink-0 items-center border-t bg-card px-6">
-        <Button variant="ghost" size="lg" onClick={() => router.back()}>
+        <Button variant="ghost" size="md" onClick={() => router.back()}>
           <ArrowLeft />
           나가기
         </Button>
@@ -639,20 +701,19 @@ export default function MdxEditor() {
         {!published && (
           <Button
             variant="ghost"
-            size="lg"
+            size="md"
             onClick={() => save(false)}
             disabled={!!saving}
-            className="mr-2 font-semibold text-[#12b886] hover:bg-[#12b886]/[0.08] hover:text-[#12b886]"
+            className="mr-2 text-primary hover:bg-primary/10 hover:text-primary"
           >
             {saving === 'draft' && <Loader2 className="animate-spin" />}
             임시저장
           </Button>
         )}
         <Button
-          size="lg"
+          size="md"
           onClick={() => save(true)}
           disabled={!!saving}
-          className="rounded-full bg-[#12b886] px-6 font-semibold text-white hover:bg-[#0ca678]"
         >
           {saving === 'publish' && <Loader2 className="animate-spin" />}
           {published ? '수정하기' : '출간하기'}

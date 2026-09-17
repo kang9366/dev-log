@@ -45,6 +45,6 @@ export default async function PostPage({ params }: Props) {
   const post = await getPost((await params).slug)
   if (!post) notFound()
 
-  const { body, ...summary } = post
-  return <PostViewer post={summary} code={await compileMdx(body)} />
+  const { body, html, ...summary } = post
+  return <PostViewer post={summary} code={await compileMdx(body)} html={html} />
 }

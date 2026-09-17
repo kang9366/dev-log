@@ -41,7 +41,7 @@ function H2({ children }: ComponentPropsWithoutRef<'h2'>) {
       variant="h3"
       as="h2"
       id={toHeadingId(children)}
-      className="mt-10 mb-4 scroll-mt-[74px] border-b pb-2 md:text-h2"
+      className="mt-10 mb-4 scroll-mt-[84px] border-b pb-2 md:text-h2"
     >
       {children}
     </Typography>
@@ -50,7 +50,7 @@ function H2({ children }: ComponentPropsWithoutRef<'h2'>) {
 
 function H3({ children }: ComponentPropsWithoutRef<'h3'>) {
   return (
-    <Typography variant="h4" as="h3" id={toHeadingId(children)} className="mt-8 mb-3 scroll-mt-[74px] md:text-h3">
+    <Typography variant="h4" as="h3" id={toHeadingId(children)} className="mt-8 mb-3 scroll-mt-[84px] md:text-h3">
       {children}
     </Typography>
   )
@@ -67,7 +67,7 @@ function P({ children }: ComponentPropsWithoutRef<'p'>) {
 
 function A({ children, href }: ComponentPropsWithoutRef<'a'>) {
   return (
-    <a href={href} className="text-primary underline underline-offset-4 hover:text-[#4338ca] dark:hover:text-[#a5b4fc]">
+    <a href={href} className="text-primary underline underline-offset-4 hover:text-accent-foreground">
       {children}
     </a>
   )
@@ -76,7 +76,7 @@ function A({ children, href }: ComponentPropsWithoutRef<'a'>) {
 // ── 인용구 ───────────────────────────────────
 function Blockquote({ children }: ComponentPropsWithoutRef<'blockquote'>) {
   return (
-    <blockquote className="my-6 rounded-r-lg border-l-4 border-primary bg-primary/[0.08] py-1 pl-6 [&_p]:mb-0 [&_p]:text-body1 [&_p]:text-muted-foreground">
+    <blockquote className="my-6 rounded-r-lg border-l-4 border-primary bg-primary/[0.08] py-4 pr-6 pl-6 [&_p]:mb-0 [&_p]:text-body1 [&_p]:text-muted-foreground">
       {children}
     </blockquote>
   )
@@ -159,7 +159,7 @@ function Code({ children, className }: ComponentPropsWithoutRef<'code'>) {
   if (className?.includes('hljs')) return <code className={className}>{children}</code>
 
   return (
-    <code className="rounded-[5px] border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[0.85em] text-[#4338ca] dark:text-[#a5b4fc]">
+    <code className="rounded-[5px] border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[0.85em] text-accent-foreground">
       {children}
     </code>
   )
@@ -181,14 +181,14 @@ function Li({ children }: ComponentPropsWithoutRef<'li'>) {
 // ── 테이블 ───────────────────────────────────
 function TableWrapper({ children }: ComponentPropsWithoutRef<'table'>) {
   return (
-    <div className="my-6 overflow-x-auto rounded-[10px] border">
+    <div className="my-6 overflow-x-auto rounded-[10px] border bg-card">
       <table className="w-full border-collapse text-body2">{children}</table>
     </div>
   )
 }
 
 function Thead({ children }: ComponentPropsWithoutRef<'thead'>) {
-  return <thead className="bg-primary">{children}</thead>
+  return <thead className="bg-table-header">{children}</thead>
 }
 
 function Tbody({ children }: ComponentPropsWithoutRef<'tbody'>) {
@@ -205,14 +205,14 @@ function Tr({ children }: ComponentPropsWithoutRef<'tr'>) {
 
 function Th({ children }: ComponentPropsWithoutRef<'th'>) {
   return (
-    <th className="border-b border-[#4338ca] px-4 py-3 text-left text-subtitle2 font-semibold whitespace-nowrap text-white">
+    <th className="border-r border-b px-4 py-3 text-left text-subtitle2 font-semibold whitespace-nowrap text-foreground last:border-r-0">
       {children}
     </th>
   )
 }
 
 function Td({ children }: ComponentPropsWithoutRef<'td'>) {
-  return <td className="border-b px-4 py-3 text-body2">{children}</td>
+  return <td className="border-r border-b px-4 py-3 text-body2 last:border-r-0">{children}</td>
 }
 
 // ── 구분선 ───────────────────────────────────

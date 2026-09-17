@@ -7,9 +7,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-sans: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-sans: var(--font-archivo), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-heading: var(--font-sans);
-    --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, Monaco, "Courier New", monospace;
+    --font-mono: var(--font-plex-mono), Menlo, Monaco, "Courier New", monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -35,6 +35,7 @@
     --color-secondary: var(--secondary);
     --color-primary-foreground: var(--primary-foreground);
     --color-primary: var(--primary);
+    --color-table-header: var(--table-header);
     --color-popover-foreground: var(--popover-foreground);
     --color-popover: var(--popover);
     --color-card-foreground: var(--card-foreground);
@@ -123,35 +124,59 @@
     --text-overline--letter-spacing: 0.1em;
     --text-overline--font-weight: 500;
 
+    /* 버튼 라벨 (Toss TDS Button 기준) */
+    --text-button-sm: 0.8125rem;
+    --text-button-sm--line-height: 1.25;
+    --text-button-sm--font-weight: 600;
+
+    --text-button-md: 0.9375rem;
+    --text-button-md--line-height: 1.25;
+    --text-button-md--font-weight: 600;
+
+    --text-button-lg: 1.0625rem;
+    --text-button-lg--line-height: 1.25;
+    --text-button-lg--font-weight: 600;
+
     --text-code: 0.875rem;
     --text-code--line-height: 1.625;
     --text-code--font-weight: 400;
 }
 
+/* 홈 태그 필터 알약: 둥실 떠다니는 모션. --r 로 기본 기울기 */
+@theme {
+    --animate-floaty: floaty 6s ease-in-out infinite;
+    @keyframes floaty {
+        0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+        50% { transform: translateY(-11px) rotate(calc(var(--r, 0deg) + 1.5deg)); }
+    }
+}
+
 /*
  * 색상 토큰 (디자인 시스템 원천)
- * primary: indigo-500 #6366f1, neutral: warm slate
+ * primary: #2a5cff, neutral: warm slate
  */
 :root {
-    --background: #f5f5f5;         /* bg.default */
+    --background: #ecedf1;         /* bg.default */
+    --dot: #d4d5db;                /* 배경 점 격자 */
     --foreground: #171717;         /* text.primary */
     --card: #ffffff;               /* bg.paper */
     --card-foreground: #171717;
     --popover: #ffffff;
     --popover-foreground: #171717;
-    --primary: #6366f1;            /* indigo-500 */
+    --primary: #2a5cff;
+    --table-header: color-mix(in srgb, var(--card), var(--foreground) 8%); /* 표 머리: 카드보다 한 톤 */
     --primary-foreground: #ffffff;
     --secondary: #f5f5f5;
     --secondary-foreground: #171717;
     --muted: #f5f5f5;
     --muted-foreground: #737373;   /* text.secondary */
-    --accent: #eef2ff;             /* primary.lighter */
-    --accent-foreground: #4338ca;  /* primary.dark */
+    --accent: #eaf0ff;             /* primary.lighter */
+    --accent-foreground: #1d44cc;  /* primary.dark */
     --destructive: #ef4444;
-    --border: #e5e5e5;             /* border.default */
+    --border: #d8d9df;             /* border.default */
     --input: #e5e5e5;
-    --ring: #818cf8;               /* border.focus */
-    --chart-1: #6366f1;
+    --ring: #7090ff;               /* border.focus */
+    --chart-1: #2a5cff;
     --chart-2: #22c55e;
     --chart-3: #f59e0b;
     --chart-4: #3b82f6;
@@ -159,46 +184,47 @@
     --radius: 0.5rem;              /* shape.borderRadius 8px */
     --sidebar: #ffffff;
     --sidebar-foreground: #171717;
-    --sidebar-primary: #6366f1;
+    --sidebar-primary: #2a5cff;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #eef2ff;
-    --sidebar-accent-foreground: #4338ca;
+    --sidebar-accent: #eaf0ff;
+    --sidebar-accent-foreground: #1d44cc;
     --sidebar-border: #e5e5e5;
-    --sidebar-ring: #818cf8;
+    --sidebar-ring: #7090ff;
 }
 
 .dark {
     --background: #171717;         /* neutral-900 */
+    --dot: #2e2e2e;
     --foreground: #fafafa;         /* neutral-50 */
     --card: #262626;               /* neutral-800 */
     --card-foreground: #fafafa;
     --popover: #262626;
     --popover-foreground: #fafafa;
-    --primary: #6366f1;
+    --primary: #2a5cff;
     --primary-foreground: #ffffff;
     --secondary: #262626;
     --secondary-foreground: #fafafa;
     --muted: #262626;
     --muted-foreground: #a3a3a3;   /* neutral-400 */
-    --accent: #1e1b4b;             /* indigo-950 */
-    --accent-foreground: #a5b4fc;  /* indigo-300 */
+    --accent: #0f1d4d;
+    --accent-foreground: #a8bdff;
     --destructive: #ef4444;
     --border: #404040;             /* neutral-700 */
     --input: #404040;
-    --ring: #818cf8;
-    --chart-1: #818cf8;
+    --ring: #7090ff;
+    --chart-1: #7090ff;
     --chart-2: #22c55e;
     --chart-3: #f59e0b;
     --chart-4: #3b82f6;
     --chart-5: #ef4444;
     --sidebar: #262626;
     --sidebar-foreground: #fafafa;
-    --sidebar-primary: #818cf8;
+    --sidebar-primary: #7090ff;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #1e1b4b;
-    --sidebar-accent-foreground: #a5b4fc;
+    --sidebar-accent: #0f1d4d;
+    --sidebar-accent-foreground: #a8bdff;
     --sidebar-border: #404040;
-    --sidebar-ring: #818cf8;
+    --sidebar-ring: #7090ff;
 }
 
 @layer base {
@@ -209,8 +235,15 @@
     @apply font-sans antialiased;
     scrollbar-gutter: stable;
   }
+  /* Tailwind v4 는 버튼 커서를 default 로 둠 → 클릭 가능한 요소는 손가락 커서 */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
   body {
     @apply bg-background text-foreground;
+    background-image: radial-gradient(circle, var(--dot) 1px, transparent 1px);
+    background-size: 28px 28px;
     overflow-x: clip;
     overscroll-behavior-y: none;
   }

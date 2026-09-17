@@ -9,7 +9,7 @@ export function AdminLoginButton() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon-lg" aria-label="관리자 로그인" title="관리자 로그인">
+        <Button variant="ghost" size="icon-md" aria-label="관리자 로그인" title="관리자 로그인">
           <ShieldUser />
         </Button>
       </DialogTrigger>

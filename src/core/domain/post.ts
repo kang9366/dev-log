@@ -1,12 +1,3 @@
-export interface Post {
-  id: number
-  category: string
-  title: string
-  excerpt: string
-  image: string
-  href: string
-}
-
 /** Supabase public.posts 행 */
 export interface PostRecord {
   id: number
@@ -17,6 +8,7 @@ export interface PostRecord {
   image_url: string
   published_at: string  // 'YYYY-MM-DD'
   body: string
+  html: string | null   // 글의 HTML 버전 (선택)
   published: boolean
 }
 
